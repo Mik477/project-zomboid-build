@@ -1,0 +1,8 @@
+name=Known and Collected - Inventory Tetris Compatibility
+id=KnownAndCollectedInventoryTetrisCompatibility
+description=Contains Build 42 Literature renderer incompatibilities between Known and Collected and Inventory Tetris.
+require=\ZombieBuddy,INVENTORY_TETRIS,KnownAndCollected
+author=project-zomboid-build
+modversion=0.1.0
+versionMin=42.20.3
+versionMax=42.20.3

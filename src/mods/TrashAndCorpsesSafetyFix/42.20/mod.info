@@ -1,0 +1,12 @@
+name=Trash and Corpses Safety Fix
+id=TrashAndCorpsesSafetyFix
+description=Guards dead or detached zombie clothing from Trash and Corpses condition-zero removal failures.
+require=\ZombieBuddy,TrashAndCorpses
+author=project-zomboid-build
+modversion=0.1.0
+versionMin=42.20.3
+versionMax=42.20.3
+javaJarFile=media/java/common/TrashAndCorpsesSafetyFix.jar
+javaPkgName=pzmod.trashandcorpsessafety
+ZBVersionMin=2.3.2
+ZBVersionMax=2.3.2

@@ -1,0 +1,8 @@
+name=Gael Gun Store - Inventory Tetris Compatibility
+id=GaelGunStoreInventoryTetrisCompatibility
+description=Applies stock-aware Gael firearm footprints and corrects Inventory Tetris render and cache sizing.
+require=INVENTORY_TETRIS,GaelGunStore_B42
+author=project-zomboid-build
+modversion=0.1.0
+versionMin=42.20.3
+versionMax=42.20.3

@@ -1,0 +1,11 @@
+name=Multiplayer Ragdoll Prototype
+id=MultiplayerRagdollPrototype
+description=Client-local restrained death ragdolls for off-ground or getting-up zombies killed by melee attacks or firearms. Uses moderate low-contact arms, vanilla joint constraints, coherent locomotion, and full-body telemetry.
+require=\ZombieBuddy
+modversion=1.2.7
+versionMin=42.20.3
+versionMax=42.20.3
+javaJarFile=media/java/client/MultiplayerRagdollPrototype.jar
+javaPkgName=pzmod.mpragdollprototype
+ZBVersionMin=2.3.2
+ZBVersionMax=2.3.2

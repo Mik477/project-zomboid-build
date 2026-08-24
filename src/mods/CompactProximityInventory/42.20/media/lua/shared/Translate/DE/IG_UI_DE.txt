@@ -1,0 +1,4 @@
+IGUI_DE = {
+    IGUI_CompactProximity_Title = "In der Nähe (kompakt)",
+    IGUI_CompactProximity_Empty = "Leer",
+}

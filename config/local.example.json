@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "steam": {
+    "root": "DISCOVERED_LOCALLY",
+    "appManifestPath": "DISCOVERED_LOCALLY",
+    "buildId": "DISCOVERED_LOCALLY"
+  },
+  "projectZomboid": {
+    "gamePath": "DISCOVERED_LOCALLY",
+    "userPath": "DISCOVERED_LOCALLY",
+    "workshopPath": "DISCOVERED_LOCALLY",
+    "exactGameVersion": "DISCOVERED_LOCALLY",
+    "serverProfilePath": "DISCOVERED_LOCALLY"
+  }
+}

@@ -1,0 +1,12 @@
+name=SecretZ Command Registration Fix
+id=SecretZCommandRegistrationFix
+description=Skips SecretZ's invalid DespawnDoor command-table assignment while preserving script loading.
+require=\ZombieBuddy,Secretz42
+author=project-zomboid-build
+modversion=0.1.0
+versionMin=42.20.3
+versionMax=42.20.3
+javaJarFile=media/java/common/SecretZCommandRegistrationFix.jar
+javaPkgName=pzmod.secretzcommandregistration
+ZBVersionMin=2.3.2
+ZBVersionMax=2.3.2

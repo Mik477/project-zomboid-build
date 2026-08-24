@@ -1,0 +1,10 @@
+name=Gael Gun Store Core Fixes
+id=GaelGunStoreCoreFixes
+description=Repairs GaelGunStore ammo, packages, magazines, firearms, reload compatibility, storage, and Gael-owned visuals.
+require=\GaelGunStore_B42
+author=Mik477
+modversion=1.0.0
+versionMin=42.20.3
+versionMax=42.20.3
+poster=poster.png
+icon=icon.png

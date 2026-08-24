@@ -1,0 +1,95 @@
+module Base
+{
+    item Bullets50Clip
+    {
+        ItemType = base:normal,
+        DisplayCategory = Ammo,
+        CanStack = FALSE,
+        Weight = 0.2,
+        DisplayName = Bullets50Clip,
+        Icon = 50Clip,
+        MaxAmmo = 30,
+        AmmoType = ggs:bullets_50,
+        StaticModel = GunMagazine,
+        GunType = Base.MG131,
+        WorldStaticModel = Clip_50Clip_Ground,
+    }
+
+    item 308Clip30
+    {
+        ItemType = base:normal,
+        DisplayCategory = Ammo,
+        CanStack = FALSE,
+        Weight = 0.1,
+        DisplayName = 308Clip30,
+        Icon = 308Clip40,
+        MaxAmmo = 30,
+        AmmoType = base:bullets_308,
+        StaticModel = GunMagazine,
+        GunType = Base.HuntingRifle,
+        WorldStaticModel = Clip_308Clip40_Ground,
+    }
+
+    item 792x57Clip40
+    {
+        ItemType = base:normal,
+        DisplayCategory = Ammo,
+        CanStack = FALSE,
+        Weight = 0.2,
+        DisplayName = 792x57Clip40,
+        Icon = 792x57Clip,
+        MaxAmmo = 40,
+        AmmoType = ggs:792x57_bullets,
+        StaticModel = GunMagazine,
+        GunType = Base.G43,
+        WorldStaticModel = 792x57Clip_Ground,
+    }
+
+    item Clip_308Clip20
+    {
+        Type = WeaponPart,
+        ItemType = base:weaponpart,
+        DisplayName = .308 Winchester 20-Round Magazine Model,
+        Icon = 308Clip,
+        PartType = Clip,
+        Weight = 0.2,
+        Tags = GunParts,
+        MountOn = Base.AssaultRifle2;Base.HuntingRifle;,
+        Tooltip = "M14Clip 20 round",
+        ConditionMax = 100,
+        StaticModel = Clip_308Clip,
+        WorldStaticModel = Clip_308Clip,
+    }
+
+    item Clip_Bullets50Clip
+    {
+        Type = WeaponPart,
+        ItemType = base:weaponpart,
+        DisplayName = MG 131 Magazine Model,
+        Icon = 50Clip,
+        PartType = Clip,
+        Weight = 0.2,
+        Tags = GunParts,
+        MountOn = Base.MG131;,
+        Tooltip = "Bullets50Clip 30 round",
+        ConditionMax = 100,
+        StaticModel = Clip_50Clip,
+        WorldStaticModel = Clip_50Clip,
+    }
+
+    item Clip_792x57Clip40
+    {
+        Type = WeaponPart,
+        ItemType = base:weaponpart,
+        DisplayName = G43 Extended Magazine Model,
+        Icon = 792x57Clip,
+        PartType = Clip,
+        Weight = 0.2,
+        Tags = GunParts,
+        MountOn = Base.G43;,
+        Tooltip = "792x57Clip40 40 round",
+        ConditionMax = 100,
+        StaticModel = Clip_792x57Clip,
+        WorldStaticModel = Clip_792x57Clip,
+    }
+}

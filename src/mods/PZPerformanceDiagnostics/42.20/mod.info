@@ -1,0 +1,11 @@
+name=PZ Performance Diagnostics
+id=PZPerformanceDiagnostics
+description=Passive Java diagnostics for vehicle entry, frame-time spikes, Lua callbacks, garbage collection, and chunk streaming.
+require=\ZombieBuddy
+modversion=0.1.2
+versionMin=42.20.3
+versionMax=42.20.3
+javaJarFile=media/java/client/PZPerformanceDiagnostics.jar
+javaPkgName=pzmod.performance
+ZBVersionMin=2.3.2
+ZBVersionMax=2.3.2

@@ -1,0 +1,55 @@
+# Generated packages and temporary build output
+dist/
+artifacts/
+*.zip
+*.7z
+*.rar
+*.jar
+*.class
+*.dmp
+hs_err_pid*.log
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+config/local.json
+config/*.local.json
+local/
+.local/
+.claude/worktrees/
+%SystemDrive%/
+server/private/
+*.key
+*.pem
+
+# Project Zomboid and Steam data that must never be committed
+Saves/
+Logs/
+/Lua/
+db/
+Workshop/
+steamapps/
+steamcmd/
+server-console.txt
+console.txt
+coop-console.txt
+*.db
+*.sqlite
+*.sqlite3
+*.bak
+*.orig
+
+# Downloaded or redistributed third-party content
+vendor/
+downloads/
+workshop-content/
+
+# Editor and operating-system files
+.idea/
+.vscode/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+desktop.ini

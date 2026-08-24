@@ -1,0 +1,8 @@
+name=Item Visual Compatibility Fixes
+id=ItemVisualCompatibilityFixes
+description=Repairs targeted Authentic Z, Bandits, and Headhunter item visual definitions for this modpack.
+require=Authentic Z - Current,Bandits2,HNDLBR_Preppers
+author=project-zomboid-build
+modversion=0.1.0
+versionMin=42.20.3
+versionMax=42.20.3

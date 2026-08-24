@@ -1,0 +1,238 @@
+module Base
+{
+    craftRecipe GGSASF_OpenAmmoCarton
+    {
+        timedAction = UnPackBox,
+        time = 50,
+        category = Packing,
+        recipeGroup = OpenBox,
+        Tags = InHandCraft;Packing;CanBeDoneInDark,
+        inputs
+        {
+            item 1 [Base.Bullets9mmCarton;Base.Bullets9x39Carton;Base.Bullets22Carton;Base.Bullets32Carton;Base.Bullets38Carton;Base.Bullets44Carton;Base.Bullets45Carton;Base.Bullets50CalCarton;Base.Bullets50MagnumCarton;Base.308Carton;Base.Bullets357Carton;Base.545x39Carton;Base.556Carton;Base.762x39Carton;Base.762x54rCarton;Base.30_06Carton;Base.303Carton;Base.3030Carton;Base.792x57Carton;Base.ShotgunShellsCarton] mappers[boxType] flags[AllowFavorite;InheritFavorite],
+        }
+        outputs
+        {
+            item 12 mapper:boxType,
+        }
+        itemMapper boxType
+        {
+            Base.Bullets9mmBox = Base.Bullets9mmCarton,
+            Base.9x39Box = Base.Bullets9x39Carton,
+            Base.Bullets22LRBox = Base.Bullets22Carton,
+            Base.Bullets32Box = Base.Bullets32Carton,
+            Base.Bullets38Box = Base.Bullets38Carton,
+            Base.Bullets44Box = Base.Bullets44Carton,
+            Base.Bullets45Box = Base.Bullets45Carton,
+            Base.Bullets50Box = Base.Bullets50CalCarton,
+            Base.Bullets50MagnumBox = Base.Bullets50MagnumCarton,
+            Base.308Box = Base.308Carton,
+            Base.Bullets357Box = Base.Bullets357Carton,
+            Base.545x39Box = Base.545x39Carton,
+            Base.556Box = Base.556Carton,
+            Base.762x39Box = Base.762x39Carton,
+            Base.762x54rBox = Base.762x54rCarton,
+            Base.30_06Box = Base.30_06Carton,
+            Base.303Box = Base.303Carton,
+            Base.3030Box = Base.3030Carton,
+            Base.792x57Box = Base.792x57Carton,
+            Base.ShotgunShellsBox = Base.ShotgunShellsCarton,
+        }
+    }
+
+    craftRecipe GGSASF_PackAmmoCarton
+    {
+        timedAction = PackingBox,
+        time = 50,
+        category = Packing,
+        Tags = InHandCraft;Packing,
+        inputs
+        {
+            item 12 [Base.Bullets9mmBox;Base.9x39Box;Base.Bullets22LRBox;Base.Bullets32Box;Base.Bullets38Box;Base.Bullets44Box;Base.Bullets45Box;Base.Bullets50Box;Base.Bullets50MagnumBox;Base.308Box;Base.Bullets357Box;Base.545x39Box;Base.556Box;Base.762x39Box;Base.762x54rBox;Base.30_06Box;Base.303Box;Base.3030Box;Base.792x57Box;Base.ShotgunShellsBox] mappers[cartonType] flags[AllowFavorite;InheritFavorite;IsExclusive],
+        }
+        outputs
+        {
+            item 1 mapper:cartonType,
+        }
+        itemMapper cartonType
+        {
+            Base.Bullets9mmCarton = Base.Bullets9mmBox,
+            Base.Bullets9x39Carton = Base.9x39Box,
+            Base.Bullets22Carton = Base.Bullets22LRBox,
+            Base.Bullets32Carton = Base.Bullets32Box,
+            Base.Bullets38Carton = Base.Bullets38Box,
+            Base.Bullets44Carton = Base.Bullets44Box,
+            Base.Bullets45Carton = Base.Bullets45Box,
+            Base.Bullets50CalCarton = Base.Bullets50Box,
+            Base.Bullets50MagnumCarton = Base.Bullets50MagnumBox,
+            Base.308Carton = Base.308Box,
+            Base.Bullets357Carton = Base.Bullets357Box,
+            Base.545x39Carton = Base.545x39Box,
+            Base.556Carton = Base.556Box,
+            Base.762x39Carton = Base.762x39Box,
+            Base.762x54rCarton = Base.762x54rBox,
+            Base.30_06Carton = Base.30_06Box,
+            Base.303Carton = Base.303Box,
+            Base.3030Carton = Base.3030Box,
+            Base.792x57Carton = Base.792x57Box,
+            Base.ShotgunShellsCarton = Base.ShotgunShellsBox,
+        }
+    }
+
+    craftRecipe GGSASF_Pack3030Rounds
+    {
+        timedAction = PlaceAmmoInBox,
+        time = 15,
+        category = Packing,
+        Tags = InHandCraft,
+        inputs
+        {
+            item 20 [Base.3030Bullets] flags[AllowFavorite;InheritFavorite;IsExclusive],
+        }
+        outputs
+        {
+            item 1 Base.3030Box,
+        }
+    }
+
+    craftRecipe GGSASF_PackShotgunShells
+    {
+        timedAction = PlaceAmmoInBox,
+        time = 15,
+        category = Packing,
+        Tags = InHandCraft,
+        inputs
+        {
+            item 25 [Base.ShotgunShells] flags[AllowFavorite;InheritFavorite;IsExclusive],
+        }
+        outputs
+        {
+            item 1 Base.ShotgunShellsBox,
+        }
+    }
+
+    craftRecipe GGSASF_PackGrenadeAmmo
+    {
+        timedAction = PlaceAmmoInBox,
+        time = 15,
+        category = Packing,
+        Tags = InHandCraft,
+        inputs
+        {
+            item 6 [Base.GrenadeAmmo] flags[AllowFavorite;InheritFavorite;IsExclusive],
+        }
+        outputs
+        {
+            item 1 Base.GrenadeAmmoBox,
+        }
+    }
+
+    craftRecipe GGSASF_PackIncendiaryGrenadeAmmo
+    {
+        timedAction = PlaceAmmoInBox,
+        time = 15,
+        category = Packing,
+        Tags = InHandCraft,
+        inputs
+        {
+            item 6 [Base.GrenadeAmmo_incendiary] flags[AllowFavorite;InheritFavorite;IsExclusive],
+        }
+        outputs
+        {
+            item 1 Base.GrenadeAmmoBox_incendiary,
+        }
+    }
+
+    craftRecipe GGSASF_OpenRocketAmmoBox
+    {
+        timedAction = OpenShellsBox,
+        time = 15,
+        category = Packing,
+        recipeGroup = OpenBox,
+        Tags = InHandCraft;CanBeDoneInDark,
+        inputs
+        {
+            item 1 [Base.RocketAmmoBox] flags[Prop2;AllowFavorite;InheritFavorite],
+        }
+        outputs
+        {
+            item 3 Base.RPG7_RocketAmmo,
+        }
+    }
+
+    craftRecipe GGSASF_PackRockets
+    {
+        timedAction = PlaceAmmoInBox,
+        time = 15,
+        category = Packing,
+        Tags = InHandCraft,
+        inputs
+        {
+            item 3 [Base.RPG7_RocketAmmo] flags[AllowFavorite;InheritFavorite;IsExclusive],
+        }
+        outputs
+        {
+            item 1 Base.RocketAmmoBox,
+        }
+    }
+
+    craftRecipe GGSASF_PackWoodArrows
+    {
+        timedAction = PlaceAmmoInBox,
+        time = 15,
+        category = Packing,
+        Tags = InHandCraft,
+        inputs { item 8 [Base.arrow_wood] flags[AllowFavorite;InheritFavorite;IsExclusive], }
+        outputs { item 1 Base.arrow_wood_pack, }
+    }
+
+    craftRecipe GGSASF_PackMetalArrows
+    {
+        timedAction = PlaceAmmoInBox,
+        time = 15,
+        category = Packing,
+        Tags = InHandCraft,
+        inputs { item 8 [Base.arrow_metal] flags[AllowFavorite;InheritFavorite;IsExclusive], }
+        outputs { item 1 Base.arrow_metal_pack, }
+    }
+
+    craftRecipe GGSASF_PackCarbonArrows
+    {
+        timedAction = PlaceAmmoInBox,
+        time = 15,
+        category = Packing,
+        Tags = InHandCraft,
+        inputs { item 8 [Base.arrow_carbon] flags[AllowFavorite;InheritFavorite;IsExclusive], }
+        outputs { item 1 Base.arrow_carbon_pack, }
+    }
+
+    craftRecipe GGSASF_PackWoodBolts
+    {
+        timedAction = PlaceAmmoInBox,
+        time = 15,
+        category = Packing,
+        Tags = InHandCraft,
+        inputs { item 8 [Base.bolt_wood] flags[AllowFavorite;InheritFavorite;IsExclusive], }
+        outputs { item 1 Base.bolt_wood_pack, }
+    }
+
+    craftRecipe GGSASF_PackMetalBolts
+    {
+        timedAction = PlaceAmmoInBox,
+        time = 15,
+        category = Packing,
+        Tags = InHandCraft,
+        inputs { item 8 [Base.bolt_metal] flags[AllowFavorite;InheritFavorite;IsExclusive], }
+        outputs { item 1 Base.bolt_metal_pack, }
+    }
+
+    craftRecipe GGSASF_PackCarbonBolts
+    {
+        timedAction = PlaceAmmoInBox,
+        time = 15,
+        category = Packing,
+        Tags = InHandCraft,
+        inputs { item 8 [Base.bolt_carbon] flags[AllowFavorite;InheritFavorite;IsExclusive], }
+        outputs { item 1 Base.bolt_carbon_pack, }
+    }
+}

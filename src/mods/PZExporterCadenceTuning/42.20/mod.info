@@ -1,0 +1,8 @@
+name=PZ Exporter Cadence Tuning
+id=PZExporterCadenceTuning
+description=Applies a shared one-second minimum update cadence to PZ Map and PZ Pulse exporters.
+require=PZ_Map,PZ_Pulse
+author=project-zomboid-build
+modversion=0.1.0
+versionMin=42.20.3
+versionMax=42.20.3

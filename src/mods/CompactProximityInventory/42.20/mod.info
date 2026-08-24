@@ -1,0 +1,7 @@
+name=Compact Proximity Inventory
+id=CompactProximityInventory
+description=Adds a compact Inventory Tetris nearby-container view with occupied-row projection and sticky selection.
+require=INVENTORY_TETRIS
+modversion=0.4.0
+versionMin=42.20.3
+versionMax=42.20.3

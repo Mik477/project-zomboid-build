@@ -1,0 +1,104 @@
+module Base
+{
+    item Clip_M14Clip
+    {
+        Type = WeaponPart,
+        ItemType = base:weaponpart,
+        DisplayName = .308 Winchester 20-Round Magazine Model,
+        Icon = M14Clip,
+        PartType = Clip,
+        Weight = 0.2,
+        Tags = GunParts,
+        MountOn = Base.ACE52_CQB;Base.ACE53;Base.AR10;Base.AssaultRifle2;Base.BAR;Base.CS5;Base.FAL;Base.FAL_CQB;Base.G27;Base.G3A3;Base.GOL;Base.Galil;Base.HKG28;Base.HuntingRifle;Base.IA2_308;Base.JNG90;Base.L115A;Base.L96;Base.M110;Base.M1A1;Base.M21;Base.M39;Base.M40;Base.MK18;Base.SA58;Base.SR338;Base.ScarH;Base.Springfield_sniper;Base.V_M87;Base.WA2000;,
+        ConditionMax = 100,
+        StaticModel = Clip_M14Clip,
+        WorldStaticModel = Clip_M14Clip,
+    }
+
+    model Clip_M14Clip
+    {
+        mesh = Mags/MAGS|308Clip,
+        texture = GunTexture/308Clip_tex,
+        cullFace = None,
+    }
+
+    item Clip_303Clip20
+    {
+        Type = WeaponPart,
+        ItemType = base:weaponpart,
+        DisplayName = .303 British 20-Round Magazine Model,
+        Icon = 303Clip20,
+        PartType = Clip,
+        Weight = 0.2,
+        Tags = GunParts,
+        MountOn = Base.FarquharHill;Base.FedorovAvtomat;Base.FedorovAvtomatMaxim;Base.HuotAutomaticRifle;Base.MauserSelbstladerM1916;,
+        ConditionMax = 100,
+        StaticModel = Clip_303Clip20,
+        WorldStaticModel = Clip_303Clip20,
+    }
+
+    model Clip_303Clip20
+    {
+        mesh = Mags/MAGS|308Clip,
+        texture = GunTexture/308Clip_tex,
+        cullFace = None,
+    }
+
+    item Clip_303Drum50
+    {
+        Type = WeaponPart,
+        ItemType = base:weaponpart,
+        DisplayName = .303 British 40-Round Drum Model,
+        Icon = 303Drum50,
+        PartType = Clip,
+        Weight = 0.2,
+        Tags = GunParts,
+        MountOn = Base.FarquharHill;Base.FedorovAvtomat;Base.FedorovAvtomatMaxim;Base.HuotAutomaticRifle;Base.MauserSelbstladerM1916;,
+        ConditionMax = 100,
+        StaticModel = Clip_303Drum50,
+        WorldStaticModel = Clip_303Drum50,
+    }
+
+    model Clip_303Drum50
+    {
+        mesh = Mags/MAGS|308Drum60,
+        texture = GunTexture/308Drum60_tex,
+        cullFace = None,
+    }
+
+    item Clip_9mmClip70old
+    {
+        Type = WeaponPart,
+        ItemType = base:weaponpart,
+        DisplayName = 9mm Vintage 70-Round Magazine Model,
+        Icon = 9mmClip70old,
+        PartType = Clip,
+        Weight = 0.2,
+        Tags = GunParts,
+        MountOn = Base.LanchesterMK1;Base.MP18;Base.Silenced_Sten;Base.Sten_MK5;,
+        ConditionMax = 100,
+        StaticModel = Clip_9mmClip70old,
+        WorldStaticModel = Clip_9mmClip70old,
+    }
+
+    model Clip_9mmClip70old
+    {
+        mesh = Mags/MAGS|9mmClip100old0,
+        texture = GunTexture/9mmClip100old_tex,
+        cullFace = None,
+    }
+
+    model Clip_Bullets50Clip
+    {
+        mesh = Mags/MAGS|308Box150,
+        texture = GunTexture/M60E4_tex,
+        cullFace = None,
+    }
+
+    model Clip_792x57Clip40
+    {
+        mesh = Mags/MAGS|792x57Clip,
+        texture = GunTexture/SVT_40_tex,
+        cullFace = None,
+    }
+}

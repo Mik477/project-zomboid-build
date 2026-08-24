@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/project-zomboid-build/modpack.schema.json",
+  "title": "Project Zomboid Friends Build manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "package", "compatibility", "workshop"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "version", "description"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$" },
+        "description": { "type": "string" }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["game", "targetBuild", "exactGameVersion", "steamBuildId", "playerCount", "serverMode"],
+      "properties": {
+        "game": { "const": "Project Zomboid" },
+        "targetBuild": { "type": "string", "minLength": 1 },
+        "exactGameVersion": { "type": "string", "minLength": 1 },
+        "steamBuildId": { "type": "string", "pattern": "^[0-9]+$" },
+        "playerCount": { "type": "integer", "minimum": 1 },
+        "serverMode": { "enum": ["hosted", "dedicated"] }
+      }
+    },
+    "workshop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collectionUrl", "revision", "itemIds", "modIds", "maps"],
+      "properties": {
+        "collectionUrl": { "type": "string" },
+        "revision": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "itemIds": { "type": "array", "items": { "type": "string", "pattern": "^[0-9]+$" }, "uniqueItems": true },
+        "modIds": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "maps": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+      }
+    }
+  }
+}

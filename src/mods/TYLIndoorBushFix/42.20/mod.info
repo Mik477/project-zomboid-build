@@ -1,0 +1,8 @@
+name=TYL Indoor Bush Fix
+id=TYLIndoorBushFix
+description=Prevents This Is Your Life bushes from spawning indoors and removes existing indoor TYL bushes.
+require=TYL_B42_STABLE_UNOFFICIAL
+author=project-zomboid-build
+modversion=0.1.0
+versionMin=42.20.3
+versionMax=42.20.3

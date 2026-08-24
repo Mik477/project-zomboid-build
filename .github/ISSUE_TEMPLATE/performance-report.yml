@@ -1,0 +1,43 @@
+name: Performance report
+description: Record a reproducible client or multiplayer performance problem.
+title: "[Performance]: "
+labels: ["performance"]
+body:
+  - type: input
+    id: game-version
+    attributes:
+      label: Exact game version
+    validations:
+      required: true
+  - type: input
+    id: package-version
+    attributes:
+      label: Package version or commit
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Client rendering or frame pacing
+        - Client simulation or memory
+        - Hosted server or networking
+        - Loading or joining
+        - Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: scenario
+    attributes:
+      label: Reproduction scenario
+      description: Include location, connected players, activity, and duration. Do not include passwords or server addresses.
+    validations:
+      required: true
+  - type: textarea
+    id: measurements
+    attributes:
+      label: Measurements
+      description: Include FPS, 1% lows, memory, join time, or server symptoms as applicable.
+    validations:
+      required: true
