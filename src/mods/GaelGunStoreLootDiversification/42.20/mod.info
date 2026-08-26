@@ -1,8 +1,12 @@
 name=Gael Gun Store Loot Diversification
 id=GaelGunStoreLootDiversification
-description=Reassigns configured vanilla firearm loot weight to same-role Gael alternatives while conserving total firearm weight.
-require=\GaelGunStore_B42
+description=Diversifies firearm selection, condition, and magazine fill for newly generated container and zombie loot.
+require=\ZombieBuddy,GaelGunStore_B42
 author=project-zomboid-build
-modversion=0.1.0
+modversion=0.2.0
 versionMin=42.20.3
 versionMax=42.20.3
+javaJarFile=media/java/common/GaelGunStoreLootDiversification.jar
+javaPkgName=pzmod.gaellootdiversification
+ZBVersionMin=2.3.2
+ZBVersionMax=2.3.2

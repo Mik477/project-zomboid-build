@@ -92,7 +92,7 @@ $luaGroups = @($events | Where-Object { $_.category -eq 'lua' -and $_.event -eq 
             MaxMs = [Math]::Round(($durations | Measure-Object -Maximum).Maximum, 3)
         }
     } | Sort-Object TotalMs -Descending | Select-Object -First $Top)
-Write-Output 'Slow Lua callbacks by total captured time:'
+Write-Output 'Historical slow Lua callbacks by total captured time:'
 if ($luaGroups.Count -eq 0) { Write-Output '  None recorded above the runtime threshold.' }
 else { $luaGroups | Format-Table -AutoSize | Out-String -Width 300 | Write-Output }
 
@@ -123,15 +123,16 @@ if ($attemptGroups.Count -eq 0) {
 else {
     foreach ($attemptGroup in $attemptGroups | Sort-Object { ($_.Group | Measure-Object -Property elapsedMs -Maximum).Maximum } -Descending) {
         $timeline = @($attemptGroup.Group | Sort-Object elapsedMs)
+        $minimum = ($timeline | Measure-Object -Property elapsedMs -Minimum).Minimum
         $maximum = ($timeline | Measure-Object -Property elapsedMs -Maximum).Maximum
         $vehicle = $timeline | Where-Object { $_.vehicleScript -and $_.vehicleScript -ne 'none' } | Select-Object -First 1
         Write-Output ("  {0}: {1:N1} ms; vehicle={2}; seat={3}; terminal={4}" -f
             $attemptGroup.Name,
-            [double]$maximum,
+            ([double]$maximum - [double]$minimum),
             [string]$vehicle.vehicleScript,
             [string]$vehicle.seat,
             [string]$timeline[-1].event)
-        $timeline | Select-Object elapsedMs,event,action,details,bEnteringVehicle,enterAnimationFinished |
+        $timeline | Select-Object elapsedMs,attemptElapsedMs,event,action,details,bEnteringVehicle,enterAnimationFinished |
             Format-Table -AutoSize | Out-String -Width 260 | Write-Output
     }
 }
@@ -149,6 +150,29 @@ else {
         Format-Table -AutoSize | Out-String -Width 260 | Write-Output
 }
 
+$actionGroups = @($events | Where-Object { $_.category -eq 'action' } |
+    Group-Object { if ($_.traceId) { [string]$_.traceId } elseif ($_.trace) { [string]$_.trace } else { 'unmatched' } })
+Write-Output 'Action trace timelines:'
+if ($actionGroups.Count -eq 0) {
+    Write-Output '  None recorded.'
+}
+else {
+    foreach ($actionGroup in $actionGroups |
+            Sort-Object { ($_.Group | Measure-Object -Property elapsedMs -Maximum).Maximum } -Descending |
+            Select-Object -First $Top) {
+        $timeline = @($actionGroup.Group | Sort-Object elapsedMs)
+        $minimum = ($timeline | Measure-Object -Property elapsedMs -Minimum).Minimum
+        $maximum = ($timeline | Measure-Object -Property elapsedMs -Maximum).Maximum
+        Write-Output ("  {0}: {1:N1} ms; events={2}; terminal={3}" -f
+            $actionGroup.Name,
+            ([double]$maximum - [double]$minimum),
+            $timeline.Count,
+            [string]$timeline[-1].event)
+        $timeline | Select-Object elapsedMs,event,actionType,details |
+            Format-Table -AutoSize | Out-String -Width 300 | Write-Output
+    }
+}
+
 $markers = @($events | Where-Object { $_.category -eq 'marker' })
 if ($markers.Count -gt 0) {
     Write-Output 'Manual markers:'
@@ -159,6 +183,6 @@ if ($markers.Count -gt 0) {
 $sessionEnd = $events | Where-Object { $_.category -eq 'summary' } | Select-Object -Last 1
 if ($sessionEnd) {
     Write-Output 'Last rolling window:'
-    $sessionEnd | Select-Object elapsedMs,update,render,updateStuff,heapUsedBytes,integrationQueue,frameSpikes,slowLua,chunkOutliers,vehicleEvents |
+    $sessionEnd | Select-Object elapsedMs,update,render,updateStuff,heapUsedBytes,integrationQueue,frameSpikes,chunkOutliers,vehicleEvents,actionEvents |
         Format-List | Out-String -Width 240 | Write-Output
 }

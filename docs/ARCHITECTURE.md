@@ -2,6 +2,8 @@
 
 The project separates content by ownership and installation target.
 
+Use `docs/AGENT-GUIDE.md` to route a behavior or symptom to its owning module and validator. This document defines the broader source/runtime boundaries.
+
 ## Source layers
 
 1. `config/modpack.json` is the reproducible inventory. Steam Workshop IDs are references, not bundled content.
@@ -27,14 +29,20 @@ All sync modes are additive. They do not mirror-delete. Replaced files are backe
 `Build-Package.ps1` produces an archive with this shape:
 
 ```text
+Install.cmd
 Install.ps1
+README.txt
 manifest.json
+BetterVehicleDynamicsPayload.ps1
+third-party/
+  ZombieBuddyInstaller_v4.2.exe
+  ZombieBuddy-LICENSE.txt
 payload/
   user/mods/       # installed below %USERPROFILE%\Zomboid\mods
   game/            # optional, installed below an explicit game path
 ```
 
-The installer copies files individually. Existing destinations are copied to a timestamped backup directory before replacement. Game overrides require an explicit switch and path.
+`Install.cmd` is the double-click entry point. It runs the PowerShell bootstrap, which auto-discovers Steam, delegates ZombieBuddy lifecycle changes to the pinned official installer, exact-hash installs the Workshop-owned Better Vehicle Dynamics overlay, copies repo-owned files individually, and writes the manifest's ordered client activation list. Existing destinations are copied to a timestamped backup directory before replacement. Other game overrides still require an explicit switch.
 
 ## Future dedicated-server support
 

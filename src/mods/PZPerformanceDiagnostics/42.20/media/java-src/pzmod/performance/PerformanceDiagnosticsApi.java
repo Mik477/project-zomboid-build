@@ -34,6 +34,12 @@ public final class PerformanceDiagnosticsApi {
                 details);
     }
 
+    @LuaMethod(name = "PZPerfDiagnostics_actionEvent", global = true)
+    public static void actionEvent(
+            String traceId, String stage, String actionType, String details) {
+        PerformanceDiagnosticsRuntime.actionEvent(traceId, stage, actionType, details);
+    }
+
     @LuaMethod(name = "PZPerfDiagnostics_callback", global = true)
     public static void callback(String eventName, String filename, String functionName, Double line) {
         PerformanceDiagnosticsRuntime.callbackInventory(

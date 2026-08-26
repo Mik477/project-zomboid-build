@@ -19,7 +19,7 @@ This is a hybrid passive ragdoll, not a GTA/Euphoria-style active ragdoll. Proje
 The Java patch:
 
 - runs only on a multiplayer client;
-- fails closed unless `projectzomboid.jar` has the exact reviewed SHA-256 for `42.20.3` / Steam build `24775755`;
+- fails closed at runtime unless `projectzomboid.jar` has the exact reviewed SHA-256 for `42.20.3` / Steam build `24775755`;
 - records whether the target was alive and either off-ground or getting up when melee or non-explosive ranged hit consequences begin;
 - at the final `applyDamage(float)` seam, recognizes lethal damage before health subtraction and selects the fast generic ragdoll handoff in default `restrained` mode; older modes retain their existing firearm, spear, knife, and stagger opening poses;
 - for ranged deaths only, requests `fallOnFront` before the forced transition when captured movement is at least `0.75 m/s` and points toward the shooter with a direction dot product of `-0.60` or lower; slow, retreating, melee, and grounded deaths keep vanilla orientation selection;
@@ -76,7 +76,7 @@ Install the source and generate the client JAR:
 The build script:
 
 - checks the local game version, Steam build, and `projectzomboid.jar` SHA-256;
-- locates the local Project Zomboid JAR and ZombieBuddy JAR;
+- locates and exact-hash checks the local Project Zomboid JAR and ZombieBuddy JAR;
 - downloads Eclipse ECJ `3.46.0` only into `%LOCALAPPDATA%\project-zomboid-build\tools` and verifies its pinned SHA-256;
 - compiles into `%LOCALAPPDATA%\project-zomboid-build\build`;
 - writes a deterministic JAR only to the deployed mod or package staging tree.

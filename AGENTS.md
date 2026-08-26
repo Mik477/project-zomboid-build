@@ -2,6 +2,8 @@
 
 This repository contains a private, portable Project Zomboid multiplayer build for a four-player group.
 
+- Routing: before changing mod behavior, manifest order, Java patches, sync/deployment tooling, or release docs, read `docs/AGENT-GUIDE.md` to identify the owning source path and focused validator.
+
 - Never commit Steam credentials, server passwords, IP addresses, player databases, saves, logs, crash dumps, or local absolute paths.
 - Never commit Project Zomboid game binaries, decompiled game source, downloaded Workshop content, or third-party mod archives.
 - Keep original custom mods in `src/mods/`, minimal game-file overlays in `src/game-overrides/`, and text patches in `patches/`.

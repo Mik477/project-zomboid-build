@@ -86,6 +86,11 @@ local function queueCompatibleMagazine(playerObj, weapon, magazine, source)
     if not (playerObj and weapon and magazine and type(_G.ChangeMagazine) == "function") then
         return false
     end
+    local intentGuard = _G.InventoryActionIntentFix_isPending
+    if type(intentGuard) == "function" then
+        local ok, pending = pcall(intentGuard, "insert-magazine", playerObj, weapon, magazine)
+        if ok and pending then return true end
+    end
     if ISInventoryPaneContextMenu.transferIfNeeded then
         ISInventoryPaneContextMenu.transferIfNeeded(playerObj, magazine)
     end

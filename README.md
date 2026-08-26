@@ -4,9 +4,11 @@ A private, reproducible Project Zomboid setup for a four-player group using a la
 
 ## Current status
 
-The repository contains no redistributed Workshop mods or game files. Version `0.9.5` makes the opt-in multiplayer ragdolls more conservative and realistic: all impacts are redirected to the pelvis, weapon force and lift are reduced, vanilla shoulder restriction is reinforced, and bodies settle sooner without sustained assistance by default. It retains the `0.9.4` hybrid animation/physics controller, `0.9.3` Gael one-click unpack fix, `0.9.1` compact-marker crafting fix, package format, safety checks, installer, and measurement plan.
+The repository contains no redistributed Workshop mods or game files. The current manifest organizes repo-owned behavior into focused patch mods for compact inventory, Gael correctness and loot policy, item visuals, Lua compatibility, Java safety guards, and observer-only diagnostics. The multiplayer ragdoll prototype remains packaged but disabled by default.
 
 The current local reference environment is Project Zomboid `42.20.3` (Steam build `24775755`). See [the local workflow](docs/LOCAL-WORKFLOW.md) for the discovered mod inventory and guarded edit/sync process, and the [activated-mod compatibility audit](docs/MOD-COMPATIBILITY-AUDIT.md) before changing the shared order.
+
+Agents should start with the [Agent Guide](docs/AGENT-GUIDE.md) to locate the owning module, edit path, focused validator, and deployment workflow for a change.
 
 The custom compact looting mode is documented in [Compact Proximity Inventory](docs/COMPACT-PROXIMITY-INVENTORY.md).
 
@@ -35,6 +37,8 @@ The opt-in Java experiment is documented in [Multiplayer Ragdoll Prototype](docs
 | `scripts/` | Validation, packaging, and installation tooling |
 | `docs/` | Performance evidence, compatibility notes, and decisions |
 
+`docs/AGENT-GUIDE.md` is the responsibility and edit-routing index. `docs/ARCHITECTURE.md` defines ownership boundaries, while `docs/LOCAL-WORKFLOW.md` contains operational commands.
+
 Downloaded Workshop content, game binaries, saves, player databases, and secrets do not belong in this repository or its release archives.
 
 Machine-specific Steam, game, Workshop, user-data, and hosted-profile paths are discovered into ignored `config/local.json`; they are never written into the portable manifest.
@@ -48,15 +52,13 @@ From PowerShell:
 ./scripts/Build-Package.ps1
 ```
 
-The build writes a versioned ZIP to `dist/`. A friend extracts that ZIP and runs:
+The build writes a versioned ZIP to `dist/`. A friend extracts the complete ZIP, closes Project Zomboid, and double-clicks:
 
-```powershell
-$gamePath = Read-Host 'Project Zomboid game directory'
-$workshopPath = Read-Host 'Workshop content directory for app 108600'
-./Install.ps1 -GamePath $gamePath -WorkshopPath $workshopPath
+```text
+Install.cmd
 ```
 
-This exact-hash checks the game, ZombieBuddy, and the Workshop seams used by generated Java patches; installs group-owned user content beneath `%USERPROFILE%\Zomboid`; and backs up replaced files. Optional game-directory overrides are not installed unless the user also supplies `-IncludeGameOverrides`.
+The bootstrap auto-discovers Steam and Project Zomboid, runs the pinned official ZombieBuddy installer, exact-hash checks the game and Java agent, installs every group-owned mod beneath `%USERPROFILE%\Zomboid`, applies the reviewed Better Vehicle Dynamics overlay from Steam's Workshop copy, and activates the exact ordered manifest in `mods/default.txt`. It backs up replaced files. Project Zomboid's normal server-join flow downloads the remaining third-party Workshop items; they are not redistributed in the ZIP.
 
 ## First data to add
 

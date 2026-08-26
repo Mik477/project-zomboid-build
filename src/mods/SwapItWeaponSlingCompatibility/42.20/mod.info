@@ -1,0 +1,8 @@
+name=Swap It Weapon Sling Compatibility
+id=SwapItWeaponSlingCompatibility
+description=Shows the primary-hand item beside the numbered Clean Hot Bar slots and preserves Swap It's immediate weapon exchange with Alice Weapon Sling and Fancy Handwork.
+require=SwapIt,alicesWeaponSling,FancyHandworkB42_19,CleanHotBar
+author=project-zomboid-build
+modversion=0.3.0
+versionMin=42.20.3
+versionMax=42.20.3

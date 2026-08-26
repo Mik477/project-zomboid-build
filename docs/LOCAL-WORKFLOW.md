@@ -2,26 +2,15 @@
 
 This repository is the reviewable source of truth for group-owned changes. The local Project Zomboid installation is the runtime and test environment. Steam Workshop is the distributor for third-party mods.
 
-## Observed installation
+## Reference environment
 
-The local inspection on 2026-08-20 found:
+The current compatibility target is Project Zomboid `42.20.3`, Steam build `24775755`. The exact enabled Workshop-item, Mod ID, and map counts come from `config/modpack.json`; local subscription totals are deliberately not treated as project state.
 
-| Layer | Observation |
-| --- | --- |
-| Game | Project Zomboid `42.20.3` |
-| Steam build | `24775755` |
-| Steam branch | No beta key recorded in the app manifest |
-| Installed Workshop items | 175; Steam subscriptions were still changing during the audit |
-| Workshop metadata | 471 `mod.info` files and 227 unique mod IDs |
-| Hosted profile | 140 Workshop items, 162 enabled mod IDs (including the repo-owned compact proximity patch), and 6 maps |
-| Hosted-profile readiness | All 140 configured Workshop items are installed |
-| Installed but not in hosted profile | 35 Workshop items, including deliberately held or unreviewed downloads |
-| Exported hosted selection | 162 mod IDs |
-| User mods | Only the shipped `examplemod` was found outside Workshop |
-
-“Installed” is not the same as “enabled.” The hosted profile is authoritative for the group modpack; extra subscriptions stay local unless deliberately added to that profile and exported.
+“Installed” is not the same as “enabled.” The ordered manifest is authoritative for the group modpack; extra subscriptions stay local unless deliberately added, reviewed, and exported.
 
 ## Ownership boundaries
+
+Use `docs/AGENT-GUIDE.md` first when deciding which module or script owns a change. The table below distinguishes repository source from local runtime data.
 
 | Local content | Repository representation | Rule |
 | --- | --- | --- |
@@ -125,7 +114,7 @@ Better Vehicle Dynamics Workshop item `3728775267` contains Lua content plus a B
 ./scripts/Install-BetterVehicleDynamics.ps1
 ```
 
-The installer discovers both trees through ignored `config/local.json`, accepts only the item's `B42.20_Manual_Install` class payload, checks the exact game version and Steam build against `config/modpack.json`, refuses to run while Project Zomboid is active, backs up every replaced class, and verifies copied SHA-256 hashes. Its local rollback manifest is written below the user's Zomboid backup tree.
+The installer discovers both trees through ignored `config/local.json`, accepts only the 18 reviewed `B42.20_Manual_Install` class paths and SHA-256 fingerprints, checks the exact game version and Steam build against `config/modpack.json`, refuses to run while Project Zomboid is active, backs up every replaced class, and verifies copied hashes. Any added, removed, or changed Workshop class is a stop condition. Its local rollback manifest is written below the user's Zomboid backup tree.
 
 Run it again after every Project Zomboid update, but only after the repository manifest has been reviewed and updated for the new exact build. Every connecting player must perform the same installation. A future dedicated server needs the corresponding overlay in its own Java class tree; that deployment is deliberately separate from this hosted-client workflow.
 
@@ -139,7 +128,7 @@ The experimental ragdoll mod contains reviewable Java source but no tracked JAR.
 ./scripts/Install-MultiplayerRagdollPrototype.ps1
 ```
 
-The preflight builds the JAR and compiles a caller from an external game package to catch ZombieBuddy advice-access regressions. The compiler cache and class output stay below `%LOCALAPPDATA%\project-zomboid-build`. The generated JAR is written only into the local user mod or package staging directory. Follow `docs/MULTIPLAYER-RAGDOLL-PROTOTYPE.md` and use a disposable hosted world.
+The preflight exact-hash checks the game and ZombieBuddy JARs, builds the prototype JAR, and compiles a caller from an external game package to catch advice-access regressions. The installer refuses to write while the game or hosted server is running. The compiler cache and class output stay below `%LOCALAPPDATA%\project-zomboid-build`; the generated JAR is written only into the local user mod or package staging directory. Follow `docs/MULTIPLAYER-RAGDOLL-PROTOTYPE.md` and use a disposable hosted world.
 
 ## Focused patches and diagnostics
 
@@ -149,6 +138,7 @@ The Lua compatibility behavior is split into `KnownAndCollectedInventoryTetrisCo
 ./scripts/Test-LuaPatchMods.ps1
 ./scripts/Test-CompatibilityPatches.ps1
 ./scripts/Test-GaelGunStorePatches.ps1
+./scripts/Test-InventoryTetrisTransferDiagnostics.ps1
 ./scripts/Test-PZPerformanceDiagnostics.ps1
 ./scripts/Install-CompatibilityPatches.ps1 -WhatIf
 ./scripts/Install-CompatibilityPatches.ps1
@@ -173,6 +163,10 @@ git status --short
 git diff
 ```
 
+When `src/game-overrides/` changed, include `-IncludeGameOverrides` in the status command.
+
 For gameplay or performance work, also add reproduction steps and before/after evidence under `docs/`. Update `docs/CHANGELOG.md` and the package version when producing a release candidate.
 
 Commit one coherent, reviewed change at a time. Before staging, confirm no local config, live server file, save, database, log, Workshop payload, game binary, password, IP address, or absolute local path is present. Inspect the staged diff again before committing. Commit and push only on explicit request; pushing is a publication step, not part of syncing files from the game.
+
+The friend archive contains `Install.cmd`, the exact manifest, all repo-owned mods, generated Java JARs, and the pinned official ZombieBuddy v4.2 installer plus its MIT license. `Build-Package.ps1` downloads that upstream installer into an external cache, verifies SHA-256 `2A52466AFE804FECE5E88868EEF75A70E8964D3E4E01A3629B57CF6FF19E24B3`, and runs `Test-FriendPackage.ps1` against the completed ZIP. Workshop mods remain Steam-distributed. A friend extracts the whole ZIP and runs `Install.cmd`; after installation, joining the host downloads any missing server Workshop items.

@@ -1,2 +1,4 @@
--- Java advice owns diagnostics; this file intentionally does not wrap game Lua.
-PZPerformanceDiagnosticsLuaPassive = true
+require "PZPerformanceDiagnostics/VehicleQueueObserver"
+
+-- Lua diagnostics observe queue state and events without replacing game methods.
+PZPerformanceDiagnosticsLuaObserverOnly = true

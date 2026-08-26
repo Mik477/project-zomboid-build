@@ -1,0 +1,8 @@
+name=Inventory Action Intent Fix
+id=InventoryActionIntentFix
+description=Suppresses duplicate inventory action requests and drops displaced hand items when no player grid can hold them.
+require=INVENTORY_TETRIS
+author=project-zomboid-build
+modversion=0.2.0
+versionMin=42.20.3
+versionMax=42.20.3

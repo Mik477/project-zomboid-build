@@ -20,6 +20,13 @@ function Get-RelativeFilePath {
 $requiredPaths = @(
     'README.md',
     'AGENTS.md',
+    'docs\AGENT-GUIDE.md',
+    'scripts\BetterVehicleDynamicsPayload.ps1',
+    'scripts\Test-BetterVehicleDynamicsPayload.ps1',
+    'scripts\Test-FriendPackage.ps1',
+    'packaging\Install.cmd',
+    'packaging\README.txt',
+    'packaging\ZombieBuddy-LICENSE.txt',
     'config\modpack.json',
     'config\modpack.schema.json',
     'config\local.example.json',
@@ -28,6 +35,9 @@ $requiredPaths = @(
     'docs\JAVA-COMPATIBILITY-PATCHES.md',
     'docs\GAEL-GUN-STORE-PATCHES.md',
     'docs\PZ-PERFORMANCE-DIAGNOSTICS.md',
+    'docs\INVENTORY-ACTION-INTENT-FIX.md',
+    'docs\INVENTORY-TETRIS-OVERFLOW-INTERACTION.md',
+    'docs\SWAP-IT-WEAPON-SLING-COMPATIBILITY.md',
     'scripts\Build-Package.ps1',
     'scripts\Apply-ModpackToLocalProfile.ps1',
     'scripts\Apply-ModpackToLocalClient.ps1',
@@ -40,9 +50,14 @@ $requiredPaths = @(
     'scripts\Test-GaelGunStorePatches.ps1',
     'scripts\Install-MultiplayerRagdollPrototype.ps1',
     'scripts\Build-PZPerformanceDiagnostics.ps1',
+    'scripts\Test-InventoryTetrisTransferDiagnostics.ps1',
+    'scripts\Test-InventoryTetrisOverflowInteractionFix.ps1',
+    'scripts\Test-InventoryActionIntentFix.ps1',
+    'scripts\Test-SwapItWeaponSlingCompatibility.ps1',
     'scripts\Test-PZPerformanceDiagnostics.ps1',
     'scripts\Build-CompatibilityPatch.ps1',
     'scripts\Test-CompatibilityPatches.ps1',
+    'scripts\Test-KahluaObjectPoolRace.ps1',
     'scripts\Install-CompatibilityPatches.ps1',
     'scripts\Test-LuaPatchMods.ps1',
     'scripts\Migrate-PatchModLayout.ps1',
@@ -60,7 +75,11 @@ $requiredPaths = @(
     'src\mods\GaelGunStoreLootDiversification\42.20\mod.info',
     'src\mods\GaelGunStoreLootDiversification\42.20\media\lua\shared\GaelGunStoreLootDiversification\Definitions.lua',
     'src\mods\GaelGunStoreLootDiversification\42.20\media\lua\shared\GaelGunStoreLootDiversification\FirearmSpawnDiversification.lua',
+    'src\mods\GaelGunStoreLootDiversification\42.20\media\lua\shared\GaelGunStoreLootDiversification\LootStatePolicy.lua',
     'src\mods\GaelGunStoreLootDiversification\42.20\media\lua\server\GaelGunStoreLootDiversification\ApplyFirearmSpawnDiversification.lua',
+    'src\mods\GaelGunStoreLootDiversification\42.20\media\lua\server\GaelGunStoreLootDiversification\InitializeLootState.lua',
+    'src\mods\GaelGunStoreLootDiversification\42.20\media\java-src\pzmod\gaellootdiversification\GaelLootStatePatches.java',
+    'src\mods\GaelGunStoreLootDiversification\42.20\media\java-src\pzmod\gaellootdiversification\GaelLootStateRuntime.java',
     'src\mods\ItemVisualCompatibilityFixes\42.20\mod.info',
     'src\mods\ItemVisualCompatibilityFixes\42.20\media\lua\shared\ItemVisualCompatibilityFixes.lua',
     'src\mods\CompactProximityInventory\42.20\mod.info',
@@ -70,15 +89,30 @@ $requiredPaths = @(
     'src\mods\CompactProximityInventory\42.20\media\lua\client\CompactProximityInventory\SelectionPolicy.lua',
     'tests\InventoryDiagnosticsCore.test.lua',
     'tests\InventoryDiagnosticsRuntime.test.lua',
+    'tests\InventoryActionIntentFix.test.lua',
+    'tests\InventoryTetrisOverflowInteractionFix.test.lua',
+    'tests\SwapItWeaponSlingCompatibility.test.lua',
+    'tests\PZPerformanceVehicleObserver.test.lua',
+    'tests\java\KahluaObjectPoolRaceHarness.java',
+    'tests\java\GaelLootStatePolicyHarness.java',
     'tests\CompactCraftContainerFilter.test.lua',
     'tests\GaelVanillaSequentialUnpack.test.lua',
     'src\mods\CompactProximityInventory\42.20\media\lua\client\CompactProximityInventory\NearbyContainers.lua',
     'src\mods\CompactProximityInventory\42.20\media\lua\client\CompactProximityInventory\Tests\NearbyContainersTests.lua',
     'src\mods\GaelGunStoreInventoryTetrisCompatibility\42.20\mod.info',
     'src\mods\GaelGunStoreInventoryTetrisCompatibility\42.20\media\lua\client\GaelGunStoreInventoryTetrisCompatibility\GaelFirearmTetrisSizes.lua',
+    'src\mods\InventoryTetrisOverflowInteractionFix\42.20\mod.info',
+    'src\mods\InventoryTetrisOverflowInteractionFix\42.20\media\lua\client\InventoryTetrisOverflowInteractionFix.lua',
+    'src\mods\InventoryTetrisOverflowInteractionFix\42.20\media\lua\client\InventoryTetrisOverflowInteractionFix\OverflowInteraction.lua',
     'src\mods\InventoryTetrisTransferDiagnostics\42.20\mod.info',
     'src\mods\InventoryTetrisTransferDiagnostics\42.20\media\lua\client\InventoryTetrisTransferDiagnostics\InventoryDiagnostics.lua',
     'src\mods\InventoryTetrisTransferDiagnostics\42.20\media\lua\client\InventoryTetrisTransferDiagnostics\InventoryDiagnosticsCore.lua',
+    'src\mods\InventoryActionIntentFix\42.20\mod.info',
+    'src\mods\InventoryActionIntentFix\42.20\media\lua\client\InventoryActionIntentFix.lua',
+    'src\mods\InventoryActionIntentFix\42.20\media\lua\client\InventoryActionIntentFix\IntentPolicy.lua',
+    'src\mods\InventoryActionIntentFix\42.20\media\lua\client\InventoryActionIntentFix\InventoryActionIntentFix.lua',
+    'src\mods\SwapItWeaponSlingCompatibility\42.20\mod.info',
+    'src\mods\SwapItWeaponSlingCompatibility\42.20\media\lua\client\SwapItWeaponSlingCompatibility.lua',
     'src\mods\MultiplayerRagdollPrototype\42.20\mod.info',
     'src\mods\MultiplayerRagdollPrototype\42.20\media\java-src\pzmod\mpragdollprototype\MultiplayerRagdollPatches.java',
     'src\mods\PZPerformanceDiagnostics\42.20\mod.info',
@@ -86,8 +120,10 @@ $requiredPaths = @(
     'src\mods\PZPerformanceDiagnostics\42.20\media\java-src\pzmod\performance\PerformanceDiagnosticsRuntime.java',
     'src\mods\PZPerformanceDiagnostics\42.20\media\lua\client\PZPerformanceDiagnostics.lua',
     'src\mods\PZPerformanceDiagnostics\42.20\media\lua\client\PZPerformanceDiagnostics\Bootstrap.lua',
+    'src\mods\PZPerformanceDiagnostics\42.20\media\lua\client\PZPerformanceDiagnostics\VehicleQueueObserver.lua',
     'src\mods\TrashAndCorpsesSafetyFix\42.20\mod.info',
     'src\mods\SecretZCommandRegistrationFix\42.20\mod.info',
+    'src\mods\KahluaObjectPoolConcurrencyFix\42.20\mod.info',
     'src\mods\TYLIndoorBushFix\42.20\mod.info',
     'src\mods\PZExporterCadenceTuning\42.20\mod.info',
     'src\mods\KnownAndCollectedInventoryTetrisCompatibility\42.20\mod.info',
@@ -122,7 +158,7 @@ try {
         $duplicateValues = @($values | Group-Object | Where-Object Count -gt 1)
         if ($duplicateValues.Count -gt 0) { $failures.Add("Duplicate values in workshop.$propertyName") }
     }
-    foreach ($obsoleteModId in @('ModpackCompatibilityFixes', 'PZPerformanceFixes', 'GaelGunStoreAmmoStorageFixes', 'InventoryTetrisTransferDiagnostics', 'MWPSelfImportLogFix')) {
+    foreach ($obsoleteModId in @('ModpackCompatibilityFixes', 'PZPerformanceFixes', 'GaelGunStoreAmmoStorageFixes', 'MultiplayerRagdollPrototype', 'MWPSelfImportLogFix')) {
         if (@($manifest.workshop.modIds) -contains $obsoleteModId) {
             $failures.Add("Disabled or retired patch mod must not be in workshop.modIds: $obsoleteModId")
         }
@@ -145,6 +181,10 @@ try {
     if ($gaelTetrisIndex -ne ($compactProximityIndex + 1)) {
         $failures.Add('GaelGunStoreInventoryTetrisCompatibility must load immediately after CompactProximityInventory.')
     }
+    $overflowInteractionIndex = [Array]::IndexOf([object[]]@($manifest.workshop.modIds), 'InventoryTetrisOverflowInteractionFix')
+    if ($overflowInteractionIndex -ne ($gaelTetrisIndex + 1)) {
+        $failures.Add('InventoryTetrisOverflowInteractionFix must load immediately after GaelGunStoreInventoryTetrisCompatibility.')
+    }
     $gaelIndex = [Array]::IndexOf([object[]]@($manifest.workshop.modIds), 'GaelGunStore_B42')
     $gaelCoreIndex = [Array]::IndexOf([object[]]@($manifest.workshop.modIds), 'GaelGunStoreCoreFixes')
     $gaelLootIndex = [Array]::IndexOf([object[]]@($manifest.workshop.modIds), 'GaelGunStoreLootDiversification')
@@ -156,7 +196,25 @@ try {
     }
     $diagnosticsIndex = [Array]::IndexOf([object[]]@($manifest.workshop.modIds), 'PZPerformanceDiagnostics')
     if ($diagnosticsIndex -ne (@($manifest.workshop.modIds).Count - 1)) {
-        $failures.Add('PZPerformanceDiagnostics must load last so it observes the final vehicle and timed-action wrappers.')
+        $failures.Add('PZPerformanceDiagnostics must load last so it observes final vehicle and timed-action state.')
+    }
+    $transferDiagnosticsIndex = [Array]::IndexOf([object[]]@($manifest.workshop.modIds), 'InventoryTetrisTransferDiagnostics')
+    if ($transferDiagnosticsIndex -ne ($diagnosticsIndex - 1)) {
+        $failures.Add('InventoryTetrisTransferDiagnostics must load immediately before PZPerformanceDiagnostics.')
+    }
+    $actionIntentIndex = [Array]::IndexOf([object[]]@($manifest.workshop.modIds), 'InventoryActionIntentFix')
+    if ($actionIntentIndex -ne ($transferDiagnosticsIndex - 1)) {
+        $failures.Add('InventoryActionIntentFix must load immediately before InventoryTetrisTransferDiagnostics.')
+    }
+    $swapItIndex = [Array]::IndexOf([object[]]@($manifest.workshop.modIds), 'SwapIt')
+    $swapItSlingCompatibilityIndex = [Array]::IndexOf([object[]]@($manifest.workshop.modIds), 'SwapItWeaponSlingCompatibility')
+    if ($swapItIndex -lt 0 -or $swapItSlingCompatibilityIndex -ne ($swapItIndex + 1)) {
+        $failures.Add('SwapItWeaponSlingCompatibility must load immediately after SwapIt.')
+    }
+    $zombieBuddyIndex = [Array]::IndexOf([object[]]@($manifest.workshop.modIds), 'ZombieBuddy')
+    $kahluaPoolFixIndex = [Array]::IndexOf([object[]]@($manifest.workshop.modIds), 'KahluaObjectPoolConcurrencyFix')
+    if ($zombieBuddyIndex -lt 0 -or $kahluaPoolFixIndex -ne ($zombieBuddyIndex + 1)) {
+        $failures.Add('KahluaObjectPoolConcurrencyFix must load immediately after ZombieBuddy.')
     }
     foreach ($pair in @(
         @{ Target = 'Secretz42'; Patch = 'SecretZCommandRegistrationFix' },
@@ -222,6 +280,43 @@ foreach ($scriptFile in $scriptFiles) {
     }
 }
 
+$workflowSafetyAssertions = @(
+    @{
+        Path = 'scripts\Build-PZPerformanceDiagnostics.ps1'
+        Tokens = @('$expectedZombieBuddyHash', 'Unsupported ZombieBuddy.jar SHA-256')
+    },
+    @{
+        Path = 'scripts\Build-MultiplayerRagdollPrototype.ps1'
+        Tokens = @('$expectedZombieBuddyHash', 'Unsupported ZombieBuddy.jar SHA-256')
+    },
+    @{
+        Path = 'scripts\Install-MultiplayerRagdollPrototype.ps1'
+        Tokens = @('Get-Process -ErrorAction SilentlyContinue', 'Stop it before installing the ragdoll prototype')
+    }
+)
+foreach ($assertion in $workflowSafetyAssertions) {
+    $source = Get-Content -LiteralPath (Join-Path $repositoryRoot $assertion.Path) -Raw
+    foreach ($token in $assertion.Tokens) {
+        if (-not $source.Contains($token)) {
+            $failures.Add("$($assertion.Path) is missing workflow safety token: $token")
+        }
+    }
+}
+
+try {
+    & (Join-Path $PSScriptRoot 'Test-BetterVehicleDynamicsPayload.ps1')
+}
+catch {
+    $failures.Add("Better Vehicle Dynamics payload validation failed: $($_.Exception.Message)")
+}
+
+try {
+    & (Join-Path $PSScriptRoot 'Test-FriendPackage.ps1')
+}
+catch {
+    $failures.Add("Friend package validation failed: $($_.Exception.Message)")
+}
+
 try {
     & (Join-Path $PSScriptRoot 'Test-GaelGunStorePatches.ps1')
 }
@@ -234,6 +329,34 @@ try {
 }
 catch {
     $failures.Add("Modpack compatibility validation failed: $($_.Exception.Message)")
+}
+
+try {
+    & (Join-Path $PSScriptRoot 'Test-InventoryActionIntentFix.ps1')
+}
+catch {
+    $failures.Add("Inventory action intent validation failed: $($_.Exception.Message)")
+}
+
+try {
+    & (Join-Path $PSScriptRoot 'Test-InventoryTetrisTransferDiagnostics.ps1')
+}
+catch {
+    $failures.Add("Inventory Tetris transfer diagnostics validation failed: $($_.Exception.Message)")
+}
+
+try {
+    & (Join-Path $PSScriptRoot 'Test-InventoryTetrisOverflowInteractionFix.ps1')
+}
+catch {
+    $failures.Add("Inventory Tetris overflow interaction validation failed: $($_.Exception.Message)")
+}
+
+try {
+    & (Join-Path $PSScriptRoot 'Test-SwapItWeaponSlingCompatibility.ps1')
+}
+catch {
+    $failures.Add("Swap It weapon-sling compatibility validation failed: $($_.Exception.Message)")
 }
 
 try {
@@ -253,8 +376,19 @@ catch {
 $inventoryDiagnosticsPath = Join-Path $repositoryRoot 'src\mods\InventoryTetrisTransferDiagnostics\42.20\media\lua\client\InventoryTetrisTransferDiagnostics\InventoryDiagnostics.lua'
 if (Test-Path -LiteralPath $inventoryDiagnosticsPath -PathType Leaf) {
     $inventoryDiagnosticsSource = Get-Content -LiteralPath $inventoryDiagnosticsPath -Raw
-    if (-not $inventoryDiagnosticsSource.Contains('version = "0.1.0"')) {
-        $failures.Add('Inventory Tetris Transfer Diagnostics must report the current mod version 0.1.0.')
+    foreach ($requiredToken in @(
+        'VERSION = "0.3.1"',
+        'Events.OnTick.Add(onTick)',
+        'missing-native-action-stall',
+        'PZPerfDiagnostics_actionEvent',
+        'ISWearClothing',
+        'ISInsertMagazine',
+        'ISEjectMagazine',
+        'ISLoadBulletsInMagazine'
+    )) {
+        if (-not $inventoryDiagnosticsSource.Contains($requiredToken)) {
+            $failures.Add("Inventory Tetris Transfer Diagnostics is missing observer-only token: $requiredToken")
+        }
     }
 }
 
@@ -331,16 +465,15 @@ if (Test-Path -LiteralPath $nearbyContainersPath -PathType Leaf) {
     }
 }
 
-$forbiddenExtensions = @('.class', '.dll', '.exe', '.jar', '.pdb', '.sqlite', '.sqlite3')
-$forbiddenFiles = Get-ChildItem -LiteralPath $repositoryRoot -File -Recurse -Force |
-    Where-Object {
-        $_.FullName -notlike "$(Join-Path $repositoryRoot '.git')*" -and
-        $_.FullName -notlike "$(Join-Path $repositoryRoot 'dist')*" -and
-        $forbiddenExtensions -contains $_.Extension.ToLowerInvariant()
+$forbiddenExtensions = @('.7z', '.class', '.db', '.dll', '.dmp', '.exe', '.jar', '.log', '.pdb', '.rar', '.sqlite', '.sqlite3', '.zip')
+$reviewableFiles = @(& git -C $repositoryRoot ls-files --cached --others --exclude-standard)
+if ($LASTEXITCODE -ne 0) {
+    $failures.Add('Could not enumerate reviewable repository files with git ls-files.')
+}
+foreach ($relativePath in $reviewableFiles) {
+    if ($forbiddenExtensions -contains [IO.Path]::GetExtension($relativePath).ToLowerInvariant()) {
+        $failures.Add("Forbidden binary/database file: $relativePath")
     }
-foreach ($forbiddenFile in $forbiddenFiles) {
-    $relativeForbiddenPath = Get-RelativeFilePath -BasePath $repositoryRoot -Path $forbiddenFile.FullName
-    $failures.Add("Forbidden binary/database file: $relativeForbiddenPath")
 }
 
 if ($failures.Count -gt 0) {

@@ -1,5 +1,16 @@
 # Change Log
 
+## 1.0.2 - 2026-08-26
+
+- Retired the obsolete Walther P38 `Icon = P38` override after the current Gael Workshop update added `Item_Walther_P38.png` and declared that icon directly.
+- Kept the separate `P38` magazine-map migration alias, which still repairs the upstream runtime key rename.
+- Updated the vanilla `.30-30` box reference to Build 42.20.3's consolidated `OpenBoxOfBullets20` craft recipe.
+
+## 1.0.1 — 2026-08-25
+
+- Audited all 66 effective feed devices and replaced unresolved `.303`, Bizon, saved obsolete `.30-06`, and MG 131 inventory icons with close existing Gael assets.
+- Corrected invalid ground-model names for vintage 70/100-round 9mm magazines without copying Workshop textures or models.
+
 ## 0.6.0 — 2026-08-24
 
 - Fixed small firearm cases continuing to favor vanilla guns by inserting each Gael replacement immediately after its source entry instead of after magazines, ammunition, and accessories.

@@ -10,6 +10,7 @@ $sourceModRoot = Join-Path $repositoryRoot 'src\mods\MultiplayerRagdollPrototype
 $sourceVersionRoot = Join-Path $sourceModRoot '42.20'
 $sourceJavaRoot = Join-Path $sourceVersionRoot 'media\java-src'
 $expectedGameJarHash = 'BDA809FB49004A07DBFC560D059C0EE58D0643AB0F33B53351B13BD62F1D8227'
+$expectedZombieBuddyHash = '6DD95CEDCE60F03BF8B8CEFD0D19EB156230E0D54BFFA07DE9DA5212A06C7BE6'
 $compilerVersion = '3.46.0'
 $compilerHash = 'D0D43F8E2D7003E5EFED612E2CBB5F01870043397D8F1BBE536FD9128F4FCBF7'
 $compilerUrl = "https://repo1.maven.org/maven2/org/eclipse/jdt/ecj/$compilerVersion/ecj-$compilerVersion.jar"
@@ -64,6 +65,10 @@ $zombieBuddyCandidates = @(
 $zombieBuddyJar = $zombieBuddyCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
 if (-not $zombieBuddyJar) {
     throw 'ZombieBuddy.jar was not found in the game directory or Workshop item 3619862853.'
+}
+$actualZombieBuddyHash = (Get-FileHash -LiteralPath $zombieBuddyJar -Algorithm SHA256).Hash
+if ($actualZombieBuddyHash -ne $expectedZombieBuddyHash) {
+    throw "Unsupported ZombieBuddy.jar SHA-256: $actualZombieBuddyHash"
 }
 
 $toolRoot = Join-Path $env:LOCALAPPDATA 'project-zomboid-build\tools'

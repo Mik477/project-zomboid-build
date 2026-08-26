@@ -1,0 +1,8 @@
+name=Inventory Tetris Overflow Interaction Fix
+id=InventoryTetrisOverflowInteractionFix
+description=Makes Inventory Tetris overflow items hoverable and draggable without changing overflow placement or recovery.
+require=INVENTORY_TETRIS
+author=project-zomboid-build
+modversion=0.1.1
+versionMin=42.20.3
+versionMax=42.20.3

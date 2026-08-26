@@ -1,9 +1,17 @@
 # Java Compatibility Patches
 
-Date: 2026-08-24
+Date: 2026-08-25
 Target: Project Zomboid 42.20.3, Steam build 24775755, ZombieBuddy 2.3.2
 
-Two repo-owned common Java mods replace the behavior-changing guards from the former `ModpackCompatibilityFixes` catch-all. They do not replace or redistribute Workshop files. JARs are generated during installation or package staging and must not be committed under `src`.
+Four repo-owned mods currently generate common Java JARs: two focused replacements for the former `ModpackCompatibilityFixes` catch-all, one Kahlua concurrency guard, and the zombie-inventory half of the firearm-loot policy. They do not replace or redistribute Workshop files. JARs are generated during installation or package staging and must not be committed under `src`.
+
+## KahluaObjectPoolConcurrencyFix
+
+Build 42.20.3 stores `ReturnValues` and each `MethodArguments` size class in process-wide unsynchronized `ArrayList` pools. Concurrent Lua-to-Java calls can observe a non-empty pool and then remove a null/already-claimed slot, matching the timed-action failure at `ReturnValues.get`'s `callFrame` assignment.
+
+The four strict ZombieBuddy advices replace the legacy static `get`/`put` bodies with isolated patch-owned pools guarded by one reentrant lock. Every advice declares the exact target arguments; without those declarations ZombieBuddy inferred zero-argument targets and transformed the classes without advising the real overloads. The replacement pools accept returns only for objects they issued, so objects held by multiple callers before retransformation can never enter or mutate the replacement pool. Weak active-owner records allow abandoned exceptional invocations to be collected.
+
+`Test-KahluaObjectPoolRace.ps1` drives millions of operations through the exact game classes: unguarded access must reproduce null, duplicate, or exception failures, direct locking must establish the concurrency baseline, and the generated JAR loaded through the actual ZombieBuddy agent must report zero. Separate agent processes cover duplicates still in a legacy pool and the more dangerous in-flight case where a stale pre-activation owner returns an object after a patched caller has begun; both execute the full `LuaJavaInvoker` lifecycle and require zero invoker failures.
 
 ## TrashAndCorpsesSafetyFix
 
@@ -16,6 +24,10 @@ The advice changes zero to one only when the item is worn, the owning container 
 The reviewed `SZDoors/SZCServer.lua:401` assigns `Commands["DespawnDoor"]` even though `Commands` is not a table in this runtime. The exception aborts the file before later `OnClientCommand` and `OnTick` registrations.
 
 The advice skips only that invalid Kahlua `tableSet`: source `SZCServer.lua`, line 401, exact `DespawnDoor` key, non-table target, and Lua closure value. The remainder of the file can load normally.
+
+## GaelGunStoreLootDiversification
+
+The Lua half initializes newly filled world containers. The common-JAR half advises the exact private `IsoZombie.DoZombieInventory(boolean)` completion seam so newly assembled zombie death inventories receive the lower-condition firearm and magazine-fill policy before they are exposed. It is inert on multiplayer clients, skips reanimated/fake-dead zombies, recurses only through that newly generated inventory, and uses per-item markers rather than scanning persisted items.
 
 ## Exact upstream gates
 
@@ -38,16 +50,17 @@ A mismatch requires a fresh upstream audit; do not weaken the gate.
 ./scripts/Install-CompatibilityPatches.ps1
 ```
 
-The installer synchronizes each source mod, backs up an existing generated JAR, and builds one deterministic `media/java/common/<ModId>.jar` per guard. Every participant must receive the same package, approve both common-JAR fingerprints through ZombieBuddy, and fully restart.
+The installer synchronizes each source mod, backs up an existing generated JAR, and builds one deterministic `media/java/common/<ModId>.jar` per guard. Every participant must receive the same package, approve all common-JAR fingerprints through ZombieBuddy, and fully restart.
 
 After all replacement mods and both generated JARs are installed, run `Migrate-PatchModLayout.ps1` once to back up and remove the obsolete `ModpackCompatibilityFixes` directory. Apply the authoritative client and hosted-profile manifest with `-AllowRemovals` only after reviewing each `-WhatIf` result.
 
 ## Runtime acceptance
 
-1. Confirm ZombieBuddy loads both enabled guard mods on host and clients.
-2. Kill enough zombies to exercise Trash and Corpses worn-item degradation.
-3. Let SecretZ initialize beyond line 401 and confirm its timer/client-command registrations run.
-4. Confirm logs contain no SecretZ line-401 exception or Trash and Corpses `Clothing.Unwear` null-square chain.
+1. Confirm ZombieBuddy loads all enabled common-JAR mods on host and clients and logs the Kahlua pool guard once.
+2. Repeat the prior key/key-ring/fanny-pack timed-action route and confirm no `ReturnValues.put`/`callFrame` failure occurs.
+3. Kill enough zombies to exercise Trash and Corpses worn-item degradation and generated firearm loot state.
+4. Let SecretZ initialize beyond line 401 and confirm its timer/client-command registrations run.
+5. Confirm logs contain no Kahlua pool exception, SecretZ line-401 exception, or Trash and Corpses `Clothing.Unwear` null-square chain.
 
 Each guard reports at most one concise application message. Raw logs, player identifiers, server values, credentials, saves, and databases remain local and must not be committed.
 

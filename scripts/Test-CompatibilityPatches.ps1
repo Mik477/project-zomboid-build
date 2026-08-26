@@ -14,18 +14,74 @@ if (-not (Test-Path -LiteralPath $LocalConfigurationPath -PathType Leaf)) {
 
 $buildPath = Join-Path $PSScriptRoot 'Build-CompatibilityPatch.ps1'
 $installPath = Join-Path $PSScriptRoot 'Install-CompatibilityPatches.ps1'
+$localConfiguration = Get-Content -LiteralPath $LocalConfigurationPath -Raw | ConvertFrom-Json
+$gameRoot = [IO.Path]::GetFullPath([string]$localConfiguration.projectZomboid.gamePath)
+$gameJar = Join-Path $gameRoot 'projectzomboid.jar'
+$java = Join-Path $gameRoot 'jre64\bin\java.exe'
+$compilerJar = Join-Path $env:LOCALAPPDATA 'project-zomboid-build\tools\ecj-3.46.0.jar'
 $patches = @(
     @{
         Id = 'TrashAndCorpsesSafetyFix'
         Package = 'pzmod.trashandcorpsessafety'
+        Version = '0.1.0'
         Classes = @('TrashAndCorpsesSafetyPatches', 'TrashAndCorpsesSafetyRuntime')
         Tokens = @('condition != 0 || !worn || !zombieOwner', 'dead || (zombieSquareMissing && sourceGridMissing)', 'AtomicBoolean')
     },
     @{
         Id = 'SecretZCommandRegistrationFix'
         Package = 'pzmod.secretzcommandregistration'
+        Version = '0.1.0'
         Classes = @('SecretZCommandRegistrationPatches', 'SecretZCommandRegistrationRuntime')
         Tokens = @('TARGET_LINE = 401', 'TARGET_KEY = "DespawnDoor"', 'table instanceof KahluaTable', 'value instanceof LuaClosure')
+    },
+    @{
+        Id = 'KahluaObjectPoolConcurrencyFix'
+        Package = 'pzmod.kahluapoolconcurrency'
+        Version = '0.1.3'
+        Classes = @(
+            'KahluaObjectPoolConcurrencyPatches',
+            'KahluaObjectPoolConcurrencyPatches$ReturnValuesGet',
+            'KahluaObjectPoolConcurrencyPatches$ReturnValuesPut',
+            'KahluaObjectPoolConcurrencyPatches$MethodArgumentsGet',
+            'KahluaObjectPoolConcurrencyPatches$MethodArgumentsPut',
+            'KahluaObjectPoolConcurrencyRuntime'
+        )
+        Tokens = @(
+            'private static final ReentrantLock POOL_LOCK',
+            'className = "se.krka.kahlua.integration.expose.ReturnValues"',
+            'className = "se.krka.kahlua.integration.expose.MethodArguments"',
+            '@Patch.Argument(0) KahluaConverterManager converterManager',
+            '@Patch.Argument(1) LuaCallFrame callFrame',
+            '@Patch.Argument(0) ReturnValues returnValues',
+            '@Patch.Argument(0) int argumentCount',
+            '@Patch.Argument(0) MethodArguments methodArguments',
+            '@Patch.OnEnter(skipOn = true)',
+            '@Patch.Return(readOnly = false) ReturnValues returnValues',
+            '@Patch.Return(readOnly = false) MethodArguments methodArguments',
+            'acquireReturnValues(',
+            'acquireMethodArguments(',
+            'WeakHashMap<ReturnValues, Boolean>',
+            'legacy pool returns quarantined'
+        )
+    },
+    @{
+        Id = 'GaelGunStoreLootDiversification'
+        Package = 'pzmod.gaellootdiversification'
+        Version = '0.2.0'
+        Classes = @(
+            'GaelLootStatePatches',
+            'GaelLootStatePatches$ZombieInventoryCompletion',
+            'GaelLootStateRuntime'
+        )
+        Tokens = @(
+            'methodName = "DoZombieInventory"',
+            '@Patch.Argument(0) boolean corpseInventory',
+            'GameClient.client',
+            'GGS_LootState_0_2_Firearm',
+            'GGS_LootState_0_2_Magazine',
+            'item instanceof HandWeapon weapon && weapon.isRanged()',
+            'gunTypes != null && !gunTypes.isEmpty()'
+        )
     }
 )
 $failures = [Collections.Generic.List[string]]::new()
@@ -46,7 +102,7 @@ foreach ($patch in $patches) {
     foreach ($expected in @(
         "id=$($patch.Id)",
         'require=\ZombieBuddy',
-        'modversion=0.1.0',
+        "modversion=$($patch.Version)",
         'versionMin=42.20.3',
         'versionMax=42.20.3',
         "javaJarFile=media/java/common/$($patch.Id).jar",
@@ -68,6 +124,9 @@ if ($failures.Count -gt 0) {
     $failures | ForEach-Object { Write-Error $_ }
     exit 1
 }
+
+& (Join-Path $PSScriptRoot 'Test-KahluaObjectPoolRace.ps1') -LocalConfigurationPath $LocalConfigurationPath
+if ($LASTEXITCODE -ne 0) { throw 'Kahlua object-pool race validation failed.' }
 
 $testBase = [IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA 'project-zomboid-build\tests'))
 $testRoot = [IO.Path]::GetFullPath((Join-Path $testBase 'CompatibilityPatches'))
@@ -111,6 +170,17 @@ try {
         }
         finally { $archive.Dispose() }
         Write-Output "$($patch.Id) deterministic JAR SHA-256: $hashA"
+
+        if ($patch.Id -eq 'GaelGunStoreLootDiversification') {
+            $policyClasses = Join-Path $testRoot 'policy-classes'
+            New-Item -ItemType Directory -Path $policyClasses -Force | Out-Null
+            $policySource = Join-Path $repositoryRoot 'tests\java\GaelLootStatePolicyHarness.java'
+            & $java '-jar' $compilerJar '-17' '-proc:none' '-encoding' 'UTF-8' `
+                '-classpath' "$gameJar;$jarA" '-d' $policyClasses $policySource
+            if ($LASTEXITCODE -ne 0) { throw 'Gael loot-state policy harness compilation failed.' }
+            & $java '-classpath' "$policyClasses;$gameJar;$jarA" 'pzmod.tests.GaelLootStatePolicyHarness'
+            if ($LASTEXITCODE -ne 0) { throw 'Gael loot-state Java policy validation failed.' }
+        }
     }
 }
 finally {

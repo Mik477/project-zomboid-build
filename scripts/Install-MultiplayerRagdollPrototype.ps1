@@ -13,8 +13,22 @@ if (-not (Test-Path -LiteralPath $LocalConfigurationPath -PathType Leaf)) {
 }
 
 $localConfiguration = Get-Content -LiteralPath $LocalConfigurationPath -Raw | ConvertFrom-Json
+$gameRoot = [IO.Path]::GetFullPath([string]$localConfiguration.projectZomboid.gamePath)
 $destinationModRoot = Join-Path ([string]$localConfiguration.projectZomboid.userPath) 'mods\MultiplayerRagdollPrototype'
 $jarPath = Join-Path $destinationModRoot '42.20\media\java\client\MultiplayerRagdollPrototype.jar'
+
+$runningProcesses = @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
+    if ($_.ProcessName -like 'ProjectZomboid*') { return $true }
+    try {
+        return $_.Path -and [IO.Path]::GetFullPath($_.Path).StartsWith(
+            $gameRoot.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar,
+            [StringComparison]::OrdinalIgnoreCase)
+    }
+    catch { return $false }
+})
+if ($runningProcesses.Count -gt 0) {
+    throw 'Project Zomboid or its hosted server is running. Stop it before installing the ragdoll prototype.'
+}
 
 if (-not $PSCmdlet.ShouldProcess($destinationModRoot, 'Install Multiplayer Ragdoll Prototype source and generated JAR')) {
     return

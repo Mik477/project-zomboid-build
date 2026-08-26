@@ -1,0 +1,12 @@
+name=Kahlua Object Pool Concurrency Fix
+id=KahluaObjectPoolConcurrencyFix
+description=Replaces Build 42 shared Kahlua argument and return-value pools with isolated guarded pools.
+require=\ZombieBuddy
+author=project-zomboid-build
+modversion=0.1.3
+versionMin=42.20.3
+versionMax=42.20.3
+javaJarFile=media/java/common/KahluaObjectPoolConcurrencyFix.jar
+javaPkgName=pzmod.kahluapoolconcurrency
+ZBVersionMin=2.3.2
+ZBVersionMax=2.3.2

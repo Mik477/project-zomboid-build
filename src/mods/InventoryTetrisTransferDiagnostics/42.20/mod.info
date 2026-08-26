@@ -1,8 +1,8 @@
 name=Inventory Tetris Transfer Diagnostics
 id=InventoryTetrisTransferDiagnostics
-description=Opt-in bounded diagnostics for Inventory Tetris equip, transfer, key-ring, transaction, and recovery behavior.
+description=Bounded observer-only diagnostics for Inventory Tetris transfer, Wear, reload, transaction, and recovery behavior.
 require=INVENTORY_TETRIS
 author=project-zomboid-build
-modversion=0.1.0
+modversion=0.3.1
 versionMin=42.20.3
 versionMax=42.20.3

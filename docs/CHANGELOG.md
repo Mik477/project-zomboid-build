@@ -1,7 +1,77 @@
 # Change Log
 
+## 0.11.0
+
+- Replaced the path-prompt package flow with a double-click `Install.cmd` friend bootstrap that auto-discovers the Steam installation, verifies Build 42.20.3 / Steam build 24775755, installs every repo-owned mod, and backs up then writes the exact 207-Mod-ID client activation order.
+- Added the official MIT-licensed ZombieBuddy Windows installer v4.2 to generated release archives from its pinned upstream release and SHA-256. The bootstrap runs that installer rather than taking ownership of ZombieBuddy's launcher integration, update, or uninstall lifecycle.
+- Integrated the exact-hash-gated Better Vehicle Dynamics manual overlay into the friend bootstrap. ZombieBuddy and Better Vehicle Dynamics remain Steam Workshop payloads; all other third-party mods remain server/Steam-distributed and are never copied into the release.
+- Added archive-level validation for the official installer fingerprint, license notice, bootstrap files, complete repo-owned payload, manifest activation order, and absence of Workshop trees.
+- Preserved exact installed-upstream gates for the Trash and Corpses and SecretZ Java patches, verified ZombieBuddy's native loader and launcher postconditions, and made BVD installs change-only with a rollback manifest.
+- Updated `GaelGunStoreCoreFixes` to 1.0.2 by retiring its stale Walther P38 icon override and following Build 42.20.3's consolidated `.30-30` box recipe; the still-required runtime P38 magazine-map alias remains.
+
+## 0.10.9
+
+- Added `SwapItWeaponSlingCompatibility` 0.3.0 immediately after Swap It. The primary-hand item now has a separate display-only `H` cell with Clean Hot Bar state/ammo rendering, while numbered attachment hotkeys keep their existing positions.
+- Restored Swap It's original immediate replacement ordering when Alice Weapon Sling intercepts the attach call: the formerly held firearm or melee weapon owns the vacated Back slot before the selected weapon's queued equip runs, preventing Inventory Tetris migration from erasing the hotbar entry.
+- Reconciled idempotent multiplayer completion and Fancy Handwork's late off-hand restoration without changing unrelated equip actions.
+- Added exact upstream hash gates and executable Kahlua fixtures for immediate call-site attachment, held-item rendering, idempotent already-equipped completion, Fancy's late restoration, final Back metadata/model, synchronization, unrelated actions, and idempotent installation.
+
+## 0.10.8
+
+- Corrected `InventoryTetrisOverflowInteractionFix` 0.1.1 after live acceptance found that visible overflow icons and their interaction cells could diverge. Inventory Tetris rendering skips stale stacks whose item is no longer present, while its original hit tester still consumed a slot for each stale stack.
+- Replaced only the overflow hit tester with the renderer's existing valid-front-item filtering and identical row/column spacing. A deterministic stale-first/visible-second fixture now proves that the visible item owns the first cell and no invisible interaction cell remains.
+
+## 0.10.7
+
+- Audited all 66 Gael feed devices. Reused close installed Gael artwork for unresolved `.303` box/drum, Bizon, saved obsolete `.30-06`, and MG 131 inventory icons, and corrected invalid vintage 9mm ground-model names without redistributing assets.
+- Added `InventoryTetrisOverflowInteractionFix` after the existing Inventory Tetris adapters. Overflow remains outside full grids, but its existing synthetic stacks now participate in tooltip hit testing and forward mouse drag movement/outside release to Inventory Tetris's native grid handler.
+- Added exact upstream hash gates and executable Lua fixtures proving normal-grid hover precedence, overflow hover fallback, drag ownership, coordinate conversion, outside cancellation/drop dispatch, click-handler preservation, and idempotent installation.
+- Live acceptance of `KahluaObjectPoolConcurrencyFix` 0.1.3 showed the isolated-pool marker, successful CS5/SV-98/Mosin equip completion, and no recurrence of the prior `ReturnValues.put(null)` failure.
+
+## 0.10.6
+
+- Corrected `KahluaObjectPoolConcurrencyFix` 0.1.3 after live acceptance disproved the 0.1.2 startup sanitizer. The first guarded access found zero pooled duplicates, but objects already checked out by multiple pre-patch owners were later returned into the shared pool twice and immediately restored the `ReturnValues.put(null)` failures.
+- Replaced access around Kahlua's legacy static pools with isolated patch-owned pools. Only objects issued by the replacement pools are accepted back; all pre-activation returns are ignored, while weak active-owner records avoid retaining invocations abandoned by exceptions.
+- Added an agent-loaded, full-`LuaJavaInvoker` regression for the exact in-flight lifecycle. It fails under 0.1.2 with `invokerFailures=2`, then completes with zero alongside the normal stress and pooled-duplicate recovery cases under 0.1.3.
+- Live reproduction covered QBA, CS5, a magazine, and a baseball bat: each transfer completed, no `ISEquipWeaponAction` was queued, and repeated Kahlua exceptions affected all item types rather than firearm-specific handling.
+
+## 0.10.5
+
+- Fixed the remaining live `ReturnValues.put(null)` timed-action failures. ZombieBuddy retransforms Kahlua pool classes after they have already been used during bootstrap, so `KahluaObjectPoolConcurrencyFix` 0.1.2 now removes null and duplicate identity entries from all argument/return pools once under the shared lock before allowing the first patched access.
+- Replaced the pool-only false-positive regression with an additional full `LuaJavaInvoker` recovery case. It deterministically reproduces the live shared-`MethodArguments` lifecycle and fails under 0.1.1; 0.1.2 reports the recovered entry and completes without invoker failures.
+- Confirmed from the live trace that ground guns were transferred into main inventory but never reached `ISEquipWeaponAction`; Inventory Tetris returned those unpositioned items to the floor only after the Kahlua exception aborted queue construction. The displaced-hand floor fallback did not run.
+
+## 0.10.4
+
+- Fixed `KahluaObjectPoolConcurrencyFix` 0.1.1 so ZombieBuddy strict matching receives the exact arguments for all four `ReturnValues` and `MethodArguments` pool methods. The regression now loads the generated JAR through the actual ZombieBuddy agent: unguarded access produces millions of corruptions, while direct-lock and agent-patched modes both complete with zero.
+- Expanded `InventoryActionIntentFix` to 0.2.0. Before an equip displaces a held item, the mod now queues Inventory Tetris's normal near-instant floor transfer only when no player grid can hold the item; positioned, hotbar, worn, force-heavy, undroppable, vehicle, and invalid-floor cases remain protected, and equivalent pending floor transfers are not duplicated.
+- Expanded `InventoryTetrisTransferDiagnostics` to 0.3.1 with observer-only `ISLoadBulletsInMagazine` state. Magazine items no longer receive the firearm-only `isContainsClip()` call that polluted diagnostic sessions with secondary Kahlua errors.
+
+## 0.10.3
+
+- Added `InventoryActionIntentFix` 0.1.0 after all gameplay mods and before observer-only diagnostics. Equivalent repeated Wear requests for one item and insert/eject/swap requests for the same firearm, operation, and selected magazine are suppressed only while the existing terminal action remains in that player's timed-action queue; the first click still delegates to the final installed context-menu wrapper and retains vanilla transfer, equip, and FIFO ordering.
+- Connected Gael's alternate-family automatic magazine path to the same optional pending-intent interface. No timed-action queue, transfer validation, multiplayer transaction, or Inventory Tetris recovery method is replaced, and different clothing items or firearms remain independent.
+- Expanded `InventoryTetrisTransferDiagnostics` to 0.3.0 so restarted-session evidence includes `ISWearClothing`, `ISInsertMagazine`, `ISEjectMagazine`, `SetMagTypeAction`, and `PostSwapAction`, including native-action/start evidence, main-inventory weight/capacity, Tetris overflow candidacy, worn state, clip/ammo state, magazine-container transitions, and final state at queue removal.
+- Added executable Kahlua fixtures and exact Build 42.20.3, Inventory Tetris, and Gael seam hashes. The previous runtime started before the Kahlua common JAR was approved, so every participant must fully exit and restart after applying this revision before gameplay acceptance.
+
+## 0.10.2
+
+- Added the exact-build `KahluaObjectPoolConcurrencyFix` common-JAR mod after a deterministic 4.8-million-operation harness reproduced null, duplicate, and exception failures in Build 42.20.3's unsynchronized `ReturnValues` and `MethodArguments` pools. One throwable-safe shared lock now covers only each pool's `get`/`put` boundary; the guarded harness completes with zero failures.
+- Added server-authoritative condition and magazine-fill variety for newly generated firearm loot. Secure gun, police, military, security, and locker storage produces 70-100% condition firearms and 50-100% filled magazines; ordinary world containers use 45-90% and 25-90%; zombie loot uses 20-60% and 10-60%.
+- Limited loot-state initialization to `OnFillContainer` and `IsoZombie.DoZombieInventory(boolean)` completion, including newly generated nested bags. Unique per-item markers prevent repeat processing, saved/player items are never rescanned, and the strict magazine predicate excludes weapons and requires positive capacity plus a non-empty gun-type list.
+- Added exact game/ZombieBuddy gates, deterministic JAR and Java policy tests, focused static/in-game regressions, generated-package support, and a new authoritative mod-list revision for the Kahlua guard.
+
+## 0.10.1
+
+- Replaced `InventoryTetrisTransferDiagnostics` 0.1.0 method wrappers with a 0.2.0 observer that reads existing local-player queues and Inventory Tetris recovery candidates without invoking or replacing timed-action, UI, validation, transaction, or recovery methods. Bounded transition logs now identify missing native actions, queue progression, container membership, inferred transfer/equip outcomes, key-ring involvement, and recovery resolution.
+- Added `PZPerformanceDiagnostics` 0.2.0 observer-only vehicle queue timelines with entry/exit event correlation, door/seat/animation state, and 2/5/15-second stall milestones. Inventory traces can also enter the bounded JSONL stream through a generic action-event API; universal Lua/Kahlua hooks remain forbidden.
+- Enabled the transfer observer immediately before the last-loaded performance diagnostics mod, added exact Build 42.20.3/Inventory Tetris seam validation, and advanced the authoritative mod-list revision for synchronized hosted-server and client setup.
+
 ## 0.10.0
 
+- Removed `PZPerformanceDiagnostics` interception of `LuaEventManager.triggerEvent` and every `KahluaThread.pcallvoid` overload after timed actions began failing in the shared Kahlua return-value path. Version 0.1.3 retains targeted frame, chunk, GC, animation, and `BaseVehicle.enter` probes; its validator now rejects universal Lua/Kahlua execution hooks.
+- Added an agent-facing responsibility map that routes symptoms and change types to owning modules, edit paths, focused validators, deployment scripts, and cross-cutting migration rules.
+- Pinned and fixture-tested all 18 Better Vehicle Dynamics overlay classes, added ZombieBuddy hash gates to diagnostics/ragdoll builders, blocked live ragdoll JAR replacement, and enforced that the client-only prototype remains absent from the shared manifest.
 - Replaced the three mixed-purpose catch-all mod IDs with focused patch mods organized by upstream seam or explicit loot policy; `PZPerformanceDiagnostics` and the ragdoll prototype remain coherent standalone modules.
 - Extracted Gael firearm Tetris sizing and Inventory Tetris transfer diagnostics from `CompactProximityInventory`; diagnostics are now packaged but disabled by default.
 - Split Gael correctness, firearm loot diversification, and cross-mod item visuals while retaining one shared corrected ammo/magazine model inside `GaelGunStoreCoreFixes`.

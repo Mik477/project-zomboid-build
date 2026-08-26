@@ -86,9 +86,9 @@ The optional in-game test-framework modules cover the pure row projection cases 
 
 ## Inventory transfer diagnostics
 
-The separate `InventoryTetrisTransferDiagnostics` `0.1.0` mod adds bounded client-side diagnostics for item movement involving the local player's inventory, weapon equip requests, Inventory Tetris recovery placement, and key-ring transfers. It is packaged but absent from the normal manifest. This is instrumentation only: it does not shorten actions, change transfer validation, or alter key-ring item data.
+The enabled `InventoryTetrisTransferDiagnostics` `0.3.1` mod adds bounded client-side observation for item movement involving the local player's inventory, Wear and reload terminal actions, standalone magazine loading, weapon equip requests, Inventory Tetris recovery placement, and key-ring transfers. This is instrumentation only: it does not shorten actions, change transfer validation, or alter key-ring item data.
 
-Every line starts with `[ITTransferDiag]` and uses a correlation ID such as `trace=I17`. Logging is enabled by default and stops after 2,500 detailed lines per game session. It records item type and runtime item ID, container kind, queue position, timings, validation outcomes, multiplayer transaction state, and Tetris placement/recovery decisions. It does not record usernames, world coordinates, server addresses, save names, or filesystem paths.
+Every line starts with `[ITTransferDiag]` and uses a correlation ID such as `trace=I17`. Logging is enabled by default and stops after 2,500 detailed lines per game session. It records item type and runtime item ID, container kind, queue position, native-action/start evidence, multiplayer transaction state, main-inventory weight/capacity, worn/clip/ammo state, and Tetris overflow/recovery state. It does not record usernames, world coordinates, server addresses, save names, or filesystem paths.
 
 The source inspection found two important latency stages when equipping a weapon from a backpack:
 
@@ -103,20 +103,23 @@ The zombie-key-ring path has a different risk boundary. Inventory Tetris renders
 
 After installing the updated mod and fully restarting the game:
 
-1. Temporarily enable `InventoryTetrisTransferDiagnostics` and confirm the console contains `event=installed` with `version=0.1.0`.
+1. Confirm enabled `InventoryTetrisTransferDiagnostics` reports `event=installed` with `version=0.3.1` and `mode=observer-only`.
 2. Start with no unrelated timed actions. Equip one weapon, place another weapon in an equipped backpack, then equip the backpack weapon once.
 3. Open a key ring inside a zombie corpse. Drag one key into the main inventory, then repeat into an equipped backpack. If it fails intermittently, make three attempts without closing the popup.
-4. Exit to the menu and copy only the `[ITTransferDiag]` lines for those attempts from `console.txt`. Keep each trace ID's lines together.
+4. Wear one helmet or pair of pants from a backpack, then insert and eject one firearm magazine from a backpack. Repeat each once with the main inventory near capacity.
+5. Exit to the menu and copy only the `[ITTransferDiag]` lines for those attempts from `console.txt`. Keep each trace ID's lines together.
 
-For weapon traces, the decisive fields are:
+For transfer, Wear, and reload traces, the decisive fields are:
 
-- `action-enqueued blockers=...` and `queueWaitMs=...`: time spent behind earlier actions.
-- `transfer-started maxTime=-1 waitForServer=true`: the multiplayer transaction owns the wait.
-- `transfer-duration-changed`, `transfer-server-confirmed`, or `transfer-server-rejected`: server timing/outcome.
-- `equip-start duration=50` and `equip-complete elapsedMs=...`: the actual equip stage.
-- `tetris-recovery-position`, `tetris-recovery-equip`, or `tetris-auto-drop-to-floor`: a post-transfer spatial recovery was attempted.
+- `action-first-observed`, `queueTypes`, `queuePosition`, and `current`: the actual FIFO sequence and wait position.
+- `native-action-changed`, `started-changed`, `everStarted`, and `missing-native-action-stall`: whether the queued Lua action reached its native timed action.
+- `transaction-changed`, `sourceContains`, and `destinationContains`: multiplayer transfer progression.
+- `inventoryWeight`, `inventoryEffectiveCapacity`, and `overflowCandidate`: capacity pressure and transient Tetris overflow.
+- `worn-state-changed`, `magazine-state-changed`, and `magazine-container-changed`: final clothing/firearm/magazine state transitions.
+- `action-removed outcome=...`: state when the action left the queue, not proof that this particular action caused that state.
+- `recovery-candidate`, `recovery-remains`, and `recovery-resolved`: post-queue Tetris recovery progression.
 
-For key rings, compare `keyring-mouse-down`, `keyring-mouse-up`, and `keyring-transfer-request` with the first `transfer-created` line. If no transfer is created, the fault is in row/drag resolution. If a transfer exists, `transfer-validation-failed`, `transfer-server-rejected`, and `transfer-state-changed` identify the next boundary.
+For key rings, compare the first observed transfer's source/destination membership, queue position, transaction, and native-action milestones. The observer cannot see a click that never created a queue entry or name the exact `isValid()` branch; absence of a trace is therefore evidence that the fault occurred before its observation seam.
 
 Logging can be disabled for the rest of the current game process from a Lua-capable debug console with:
 

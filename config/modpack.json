@@ -4,7 +4,7 @@
     "package":  {
                     "id":  "project-zomboid-build",
                     "name":  "Project Zomboid Friends Build",
-                    "version":  "0.10.0",
+                    "version":  "0.11.0",
                     "description":  "Portable client package for a four-player modded Project Zomboid server."
                 },
     "compatibility":  {
@@ -17,7 +17,7 @@
                       },
     "workshop":  {
                      "collectionUrl":  "",
-                     "revision":  "sha256:e8b43dfa7ba64e8a7f5ffab24da5bd2c4809cbe1c75846cfb54906163b0ab183",
+                     "revision":  "sha256:4f8e3058524dec4ffbfb1f99e674f20fae972423025b139a597e6aba4a3848e0",
                      "itemIds":  [
                                      "3619862853",
                                      "3119788162",
@@ -186,6 +186,7 @@
                                  ],
                      "modIds":  [
                                     "ZombieBuddy",
+                                    "KahluaObjectPoolConcurrencyFix",
                                     "ETO_P",
                                     "42Grapeseed",
                                     "ArcadiaRVInterior_B42_MP",
@@ -327,9 +328,10 @@
                                     "Explosives",
                                     "ImmersiveVehiclePaint",
                                     "INVENTORY_TETRIS",
-                                    "CompactProximityInventory",
-                                    "GaelGunStoreInventoryTetrisCompatibility",
-                                    "jbCivilDefenseSirens",
+                                     "CompactProximityInventory",
+                                     "GaelGunStoreInventoryTetrisCompatibility",
+                                     "InventoryTetrisOverflowInteractionFix",
+                                     "jbCivilDefenseSirens",
                                     "JumboTreeIndoorFix",
                                     "LEGION18",
                                     "mapmodmanager",
@@ -384,8 +386,11 @@
                                     "KnownAndCollectedInventoryTetrisCompatibility",
                                     "HNDLBR_Preppers",
                                     "ItemVisualCompatibilityFixes",
-                                    "errorMagnifier",
-                                    "SwapIt",
+                                     "errorMagnifier",
+                                      "SwapIt",
+                                      "SwapItWeaponSlingCompatibility",
+                                      "InventoryActionIntentFix",
+                                     "InventoryTetrisTransferDiagnostics",
                                     "PZPerformanceDiagnostics"
                                 ],
                      "maps":  [

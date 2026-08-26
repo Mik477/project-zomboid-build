@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('TrashAndCorpsesSafetyFix', 'SecretZCommandRegistrationFix')]
+    [ValidateSet('TrashAndCorpsesSafetyFix', 'SecretZCommandRegistrationFix', 'KahluaObjectPoolConcurrencyFix', 'GaelGunStoreLootDiversification')]
     [string]$PatchId,
     [string]$DestinationModRoot,
     [string]$LocalConfigurationPath

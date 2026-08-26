@@ -15,7 +15,12 @@ if (-not (Test-Path -LiteralPath $LocalConfigurationPath -PathType Leaf)) {
 $localConfiguration = Get-Content -LiteralPath $LocalConfigurationPath -Raw | ConvertFrom-Json
 $gameRoot = [IO.Path]::GetFullPath([string]$localConfiguration.projectZomboid.gamePath)
 $userModsRoot = Join-Path ([string]$localConfiguration.projectZomboid.userPath) 'mods'
-$patchIds = @('TrashAndCorpsesSafetyFix', 'SecretZCommandRegistrationFix')
+$patchIds = @(
+    'TrashAndCorpsesSafetyFix',
+    'SecretZCommandRegistrationFix',
+    'KahluaObjectPoolConcurrencyFix',
+    'GaelGunStoreLootDiversification'
+)
 
 $runningProcesses = @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
     if ($_.ProcessName -like 'ProjectZomboid*') { return $true }
@@ -57,4 +62,4 @@ foreach ($patchId in $patchIds) {
     Write-Output "$patchId common JAR SHA-256: $jarHash"
 }
 
-Write-Output 'Install complete. Every participant must approve both common-JAR fingerprints and fully restart Project Zomboid.'
+Write-Output 'Install complete. Every participant must approve all common-JAR fingerprints and fully restart Project Zomboid.'

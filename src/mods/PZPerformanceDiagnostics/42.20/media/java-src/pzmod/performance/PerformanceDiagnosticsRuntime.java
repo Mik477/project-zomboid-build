@@ -17,7 +17,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
-import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.IdentityHashMap;
@@ -30,19 +29,18 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import me.zed_0xff.zombie_buddy.Accessor;
 import me.zed_0xff.zombie_buddy.Utils;
-import se.krka.kahlua.vm.LuaClosure;
-import se.krka.kahlua.vm.Prototype;
 
 public final class PerformanceDiagnosticsRuntime {
     static final String EXPECTED_GAME_JAR_SHA256 =
             "bda809fb49004a07dbfc560d059c0ee58d0643ab0f33b53351b13bd62f1d8227";
     static final double FRAME_SPIKE_MILLIS = 33.0;
     static final double SEVERE_FRAME_SPIKE_MILLIS = 75.0;
-    static final double LUA_CALLBACK_MILLIS = 2.0;
     static final double CHUNK_MAIN_MILLIS = 3.0;
     static final double CHUNK_WORKER_MILLIS = 12.0;
     static final int LOG_LINE_LIMIT = 60_000;
     static final int LOG_QUEUE_CAPACITY = 8_192;
+    static final int ACTION_EVENT_LIMIT = 10_000;
+    static final int ACTION_DETAILS_LIMIT = 1_024;
     static final long SUMMARY_INTERVAL_NANOS = 5_000_000_000L;
     static final long ATTEMPT_TTL_NANOS = 45_000_000_000L;
 
@@ -56,17 +54,15 @@ public final class PerformanceDiagnosticsRuntime {
     private static final RollingWindow UPDATE_WINDOW = new RollingWindow(512);
     private static final RollingWindow RENDER_WINDOW = new RollingWindow(512);
     private static final RollingWindow UPDATE_STUFF_WINDOW = new RollingWindow(512);
-    private static final ThreadLocal<ArrayDeque<String>> LUA_EVENTS =
-            ThreadLocal.withInitial(ArrayDeque::new);
     private static final IdentityHashMap<Object, Attempt> PLAYER_ATTEMPTS = new IdentityHashMap<>();
     private static final IdentityHashMap<Object, Attempt> VEHICLE_ATTEMPTS = new IdentityHashMap<>();
     private static final Map<String, Attempt> ATTEMPTS = new ConcurrentHashMap<>();
     private static final Object ATTEMPT_LOCK = new Object();
     private static final AtomicInteger FRAME_SPIKES = new AtomicInteger();
-    private static final AtomicInteger LUA_SLOW_CALLBACKS = new AtomicInteger();
     private static final AtomicInteger CHUNKS_QUEUED = new AtomicInteger();
     private static final AtomicInteger CHUNK_OUTLIERS = new AtomicInteger();
     private static final AtomicInteger VEHICLE_EVENTS = new AtomicInteger();
+    private static final AtomicInteger ACTION_EVENTS = new AtomicInteger();
     private static final AtomicLong FRAME_SEQUENCE = new AtomicLong();
 
     private static volatile boolean initialized;
@@ -140,10 +136,10 @@ public final class PerformanceDiagnosticsRuntime {
                 + "; lines=" + (log == null ? 0 : log.linesWritten())
                 + "; dropped=" + (log == null ? 0 : log.linesDropped())
                 + "; frameSpikes=" + FRAME_SPIKES.get()
-                + "; slowLua=" + LUA_SLOW_CALLBACKS.get()
                 + "; chunksQueued=" + CHUNKS_QUEUED.get()
                 + "; chunkOutliers=" + CHUNK_OUTLIERS.get()
-                + "; vehicleEvents=" + VEHICLE_EVENTS.get();
+                + "; vehicleEvents=" + VEHICLE_EVENTS.get()
+                + "; actionEvents=" + ACTION_EVENTS.get();
     }
 
     public static long currentThreadCpuTime() {
@@ -403,60 +399,6 @@ public final class PerformanceDiagnosticsRuntime {
         }
     }
 
-    public static void enterLuaEvent(String eventName) {
-        if (!enabled()) {
-            return;
-        }
-        LUA_EVENTS.get().push(eventName == null ? "unknown" : eventName);
-    }
-
-    public static void exitLuaEvent(String eventName, Throwable thrown) {
-        if (!enabled()) {
-            return;
-        }
-        ArrayDeque<String> events = LUA_EVENTS.get();
-        if (!events.isEmpty()) {
-            events.pop();
-        }
-        if (thrown != null) {
-            event("lua", "event-error",
-                    "eventName", eventName,
-                    "error", throwableDescription(thrown));
-        }
-    }
-
-    public static boolean shouldTimeLuaCallback(Object function) {
-        if (!enabled() || !(function instanceof LuaClosure)) {
-            return false;
-        }
-        return !LUA_EVENTS.get().isEmpty();
-    }
-
-    public static void recordLuaCallback(Object function, long wallStart, Throwable thrown) {
-        if (!enabled() || wallStart == 0L || !(function instanceof LuaClosure closure)) {
-            return;
-        }
-        double elapsed = millis(System.nanoTime() - wallStart);
-        if (elapsed < LUA_CALLBACK_MILLIS && thrown == null) {
-            return;
-        }
-        LUA_SLOW_CALLBACKS.incrementAndGet();
-        ArrayDeque<String> events = LUA_EVENTS.get();
-        String eventName = events.isEmpty() ? "unknown" : events.peek();
-        Prototype prototype = closure.prototype;
-        String filename = prototype == null ? "unknown" : safeValue(prototype.filename);
-        String name = prototype == null ? "unknown" : safeValue(prototype.name);
-        int line = prototype == null || prototype.lines == null || prototype.lines.length == 0
-                ? -1 : prototype.lines[0];
-        event("lua", "slow-callback",
-                "eventName", eventName,
-                "durationMs", round(elapsed),
-                "file", filename,
-                "function", name,
-                "line", line,
-                "error", thrown == null ? "none" : throwableDescription(thrown));
-    }
-
     public static void callbackInventory(
             String eventName, String filename, String functionName, int line) {
         if (!enabled()) {
@@ -502,7 +444,7 @@ public final class PerformanceDiagnosticsRuntime {
         VEHICLE_EVENTS.incrementAndGet();
         event("vehicle", stage,
                 "attempt", attempt.id,
-                "elapsedMs", round(millis(now - attempt.startedNanos)),
+                "attemptElapsedMs", round(millis(now - attempt.startedNanos)),
                 "action", action,
                 "details", details,
                 "seat", attempt.seat,
@@ -512,6 +454,17 @@ public final class PerformanceDiagnosticsRuntime {
                 "characterVehicle", callNoArg(character, "getVehicle") != null,
                 "bEnteringVehicle", callString(character, "GetVariable", "bEnteringVehicle"),
                 "enterAnimationFinished", callString(character, "GetVariable", "EnterAnimationFinished"));
+    }
+
+    public static void actionEvent(
+            String traceId, String stage, String actionType, String details) {
+        if (!enabled() || !reserveActionEvent()) {
+            return;
+        }
+        event("action", boundedText(stage, 96),
+                "traceId", boundedText(traceId, 128),
+                "actionType", boundedText(actionType, 128),
+                "details", boundedText(details, ACTION_DETAILS_LIMIT));
     }
 
     public static void baseVehicleEnter(
@@ -596,10 +549,27 @@ public final class PerformanceDiagnosticsRuntime {
                 "playerChunk", player.chunk,
                 "vehicleSpeedKph", player.vehicleSpeed,
                 "frameSpikes", FRAME_SPIKES.get(),
-                "slowLua", LUA_SLOW_CALLBACKS.get(),
                 "chunksQueued", CHUNKS_QUEUED.get(),
                 "chunkOutliers", CHUNK_OUTLIERS.get(),
-                "vehicleEvents", VEHICLE_EVENTS.get());
+                "vehicleEvents", VEHICLE_EVENTS.get(),
+                "actionEvents", ACTION_EVENTS.get());
+    }
+
+    private static boolean reserveActionEvent() {
+        while (true) {
+            int current = ACTION_EVENTS.get();
+            if (current >= ACTION_EVENT_LIMIT) {
+                return false;
+            }
+            if (ACTION_EVENTS.compareAndSet(current, current + 1)) {
+                return true;
+            }
+        }
+    }
+
+    static String boundedText(String value, int limit) {
+        String text = value == null ? "none" : value;
+        return text.length() <= limit ? text : text.substring(0, limit);
     }
 
     private static void noteChunkEvent(String eventName, String coordinates) {

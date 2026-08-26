@@ -275,43 +275,4 @@ public final class PerformanceDiagnosticsPatches {
         }
     }
 
-    @Patch(className = "zombie.Lua.LuaEventManager", methodName = "triggerEvent")
-    public static final class LuaEventDispatch {
-        @Patch.OnEnter
-        public static void enter(@Patch.Argument(0) String eventName) {
-            PerformanceDiagnosticsRuntime.enterLuaEvent(eventName);
-        }
-
-        @Patch.OnExit(onThrowable = Throwable.class)
-        public static void exit(
-                @Patch.Argument(0) String eventName,
-                @Patch.Thrown Throwable thrown) {
-            PerformanceDiagnosticsRuntime.exitLuaEvent(eventName, thrown);
-        }
-    }
-
-    @Patch(className = "se.krka.kahlua.vm.KahluaThread", methodName = "pcallvoid")
-    public static final class LuaCallback {
-        @Patch.OnEnter
-        public static void enter(
-                @Patch.Argument(0) Object function,
-                @Patch.Local("wallStart") long wallStart,
-                @Patch.Local("timed") boolean timed) {
-            timed = PerformanceDiagnosticsRuntime.shouldTimeLuaCallback(function);
-            if (timed) {
-                wallStart = System.nanoTime();
-            }
-        }
-
-        @Patch.OnExit(onThrowable = Throwable.class)
-        public static void exit(
-                @Patch.Argument(0) Object function,
-                @Patch.Local("wallStart") long wallStart,
-                @Patch.Local("timed") boolean timed,
-                @Patch.Thrown Throwable thrown) {
-            if (timed) {
-                PerformanceDiagnosticsRuntime.recordLuaCallback(function, wallStart, thrown);
-            }
-        }
-    }
 }

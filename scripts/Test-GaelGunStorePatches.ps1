@@ -24,6 +24,9 @@ $spawnDiversificationPath = Join-Path $lootVersionRoot 'media\lua\shared\GaelGun
 $spawnApplicationPath = Join-Path $lootVersionRoot 'media\lua\server\GaelGunStoreLootDiversification\ApplyFirearmSpawnDiversification.lua'
 $gaelLootApplicationPath = Join-Path $lootVersionRoot 'media\lua\server\GaelGunStoreLootDiversification\DiversifyGaelLoot.lua'
 $spawnDiversificationTestPath = Join-Path $lootVersionRoot 'media\lua\client\GaelGunStoreLootDiversification\Tests\FirearmSpawnDiversificationTests.lua'
+$lootStatePolicyPath = Join-Path $lootVersionRoot 'media\lua\shared\GaelGunStoreLootDiversification\LootStatePolicy.lua'
+$lootStateApplicationPath = Join-Path $lootVersionRoot 'media\lua\server\GaelGunStoreLootDiversification\InitializeLootState.lua'
+$lootStateJavaPath = Join-Path $lootVersionRoot 'media\java-src\pzmod\gaellootdiversification\GaelLootStateRuntime.java'
 $visualCompatibilityPath = Join-Path $visualModRoot '42.20\media\lua\shared\ItemVisualCompatibilityFixes.lua'
 $failures = [Collections.Generic.List[string]]::new()
 
@@ -91,10 +94,63 @@ foreach ($relativePath in $requiredPaths) {
         $failures.Add("Missing Gael patch path: $relativePath")
     }
 }
-foreach ($path in @($lootDefinitionsPath, $spawnDiversificationPath, $spawnApplicationPath, $gaelLootApplicationPath, $spawnDiversificationTestPath, $visualCompatibilityPath)) {
+foreach ($path in @(
+    $lootDefinitionsPath,
+    $spawnDiversificationPath,
+    $spawnApplicationPath,
+    $gaelLootApplicationPath,
+    $spawnDiversificationTestPath,
+    $lootStatePolicyPath,
+    $lootStateApplicationPath,
+    $lootStateJavaPath,
+    $visualCompatibilityPath
+)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         $failures.Add("Missing split Gael patch path: $path")
     }
+}
+$lootModInfo = Get-Content -LiteralPath (Join-Path $lootVersionRoot 'mod.info') -Raw
+foreach ($expected in @(
+    'id=GaelGunStoreLootDiversification',
+    'require=\ZombieBuddy,GaelGunStore_B42',
+    'modversion=0.2.0',
+    'javaJarFile=media/java/common/GaelGunStoreLootDiversification.jar',
+    'javaPkgName=pzmod.gaellootdiversification'
+)) {
+    if (-not $lootModInfo.Contains($expected)) { $failures.Add("Loot diversification mod.info is missing: $expected") }
+}
+$lootStatePolicy = Get-Content -LiteralPath $lootStatePolicyPath -Raw
+$lootStateApplication = Get-Content -LiteralPath $lootStateApplicationPath -Raw
+$lootStateJava = Get-Content -LiteralPath $lootStateJavaPath -Raw
+foreach ($expected in @(
+    'secure = {',
+    'condition = { 70, 100 }',
+    'magazine = { 50, 100 }',
+    'zombie = {',
+    'condition = { 20, 60 }',
+    'magazine = { 10, 60 }',
+    'GGS_LootState_0_2_Firearm',
+    'GGS_LootState_0_2_Magazine'
+)) {
+    if (-not $lootStatePolicy.Contains($expected)) { $failures.Add("Loot state policy is missing: $expected") }
+}
+foreach ($expected in @(
+    'Events.OnFillContainer.Add(initializeContainer)',
+    'or instanceof(item, "HandWeapon")',
+    'item:getMaxAmmo() <= 0',
+    'not gunTypes:isEmpty()',
+    'instanceof(item, "InventoryContainer")'
+)) {
+    if (-not $lootStateApplication.Contains($expected)) { $failures.Add("Loot state application is missing: $expected") }
+}
+foreach ($expected in @(
+    'GameClient.client',
+    'zombie.isReanimatedPlayer()',
+    'zombie.wasFakeDead()',
+    'item instanceof HandWeapon weapon && weapon.isRanged()',
+    'gunTypes != null && !gunTypes.isEmpty()'
+)) {
+    if (-not $lootStateJava.Contains($expected)) { $failures.Add("Zombie loot state runtime is missing: $expected") }
 }
 if ($failures.Count -gt 0) {
     $failures | ForEach-Object { Write-Error $_ }
@@ -105,7 +161,7 @@ $modInfo = Get-Content -LiteralPath (Join-Path $versionRoot 'mod.info') -Raw
 foreach ($expected in @(
     'id=GaelGunStoreCoreFixes',
     'require=\GaelGunStore_B42',
-    'modversion=1.0.0',
+    'modversion=1.0.2',
     'versionMin=42.20.3',
     'versionMax=42.20.3'
 )) {
@@ -332,8 +388,15 @@ foreach ($requiredDefinition in @(
     '{ item = "Base.G36", parameters = { Icon = "G36C" } }',
     '{ item = "Base.M9A3", parameters = { Icon = "M9" } }',
     '{ item = "Base.PKM", parameters = { Icon = "PKP" } }',
-    '{ item = "Base.Walther_P38", parameters = { Icon = "P38" } }',
     '{ item = "Base.Rhino60DS", parameters = { Icon = "Rhino20DS" } }',
+    '{ item = "Base.303Clip20", parameters = { Icon = "792x57Clip" } }',
+    '{ item = "Base.303Drum50", parameters = { Icon = "308Drum60" } }',
+    '{ item = "Base.BizonClip64", parameters = { Icon = "22LRDrum100" } }',
+    '{ item = "Base.30_06Clip", parameters = { Icon = "792x57Clip" } }',
+    '{ item = "Base.30_06Clip40", parameters = { Icon = "308Clip40" } }',
+    '{ item = "Base.Bullets50Clip", parameters = { Icon = "308Box150" } }',
+    '{ item = "Base.9mmClip70old", parameters = { WorldStaticModel = "Clip_9mmClip70old" } }',
+    '{ item = "Base.9mmClip100old", parameters = { WorldStaticModel = "Clip_9mmClip100old" } }',
     'item = "Base.Grizzly50AE"',
     'ammoType = "ggs:bullets_50magnum"',
     'item = "Base.M39", ammoType = "base:bullets_308"',
@@ -531,7 +594,7 @@ if (Test-Path -LiteralPath $LocalConfigurationPath -PathType Leaf) {
             foreach ($match in [regex]::Matches($upstreamText, '(?m)^\s*craftRecipe\s+(\S+)')) { $null = $upstreamRecipes.Add($match.Groups[1].Value) }
 
             $gaelMediaRoot = Join-Path $workshopRoot '3616176188\mods\GaelGunStore\42\media'
-            foreach ($iconAlias in @('BenelliM4', 'G36C', 'M9', 'PKP', 'P38', 'Rhino20DS')) {
+            foreach ($iconAlias in @('BenelliM4', 'G36C', 'M9', 'PKP', 'Rhino20DS', '792x57Clip', '308Drum60', '22LRDrum100', '308Clip40', '308Box150')) {
                 if (-not (Test-Path -LiteralPath (Join-Path $gaelMediaRoot "textures\Item_$iconAlias.png") -PathType Leaf) -and
                     -not (Test-Path -LiteralPath (Join-Path $gaelMediaRoot "textures\item_$iconAlias.png") -PathType Leaf)) {
                     $failures.Add("Visual icon alias asset is missing: Item_$iconAlias.png")

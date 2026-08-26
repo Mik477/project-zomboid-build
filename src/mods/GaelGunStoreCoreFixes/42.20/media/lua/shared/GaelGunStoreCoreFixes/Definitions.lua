@@ -9,7 +9,7 @@ Definitions.boxes = {
     { item = "Base.Bullets45Box", recipe = "GGS_OpenBoxofBullets45", rounds = 50 },
     { item = "Base.Bullets50MagnumBox", recipe = "GGS_OpenBoxofBullets50Magnum", rounds = 30 },
     { item = "Base.Bullets9mmBox", recipe = "GGS_OpenBoxofBullets9mm", rounds = 50 },
-    { item = "Base.3030Box", recipe = "OpenBoxof3030Bullets", rounds = 20 },
+    { item = "Base.3030Box", recipe = "OpenBoxOfBullets20", rounds = 20 },
     { item = "Base.303Box", recipe = "GGS_OpenBoxof303Bullets", rounds = 20 },
     { item = "Base.308Box", recipe = "GGS_OpenBoxof308Bullets", rounds = 20 },
     { item = "Base.30_06Box", recipe = "GGS_OpenBoxof30_06Bullets", rounds = 20 },
@@ -189,8 +189,15 @@ Definitions.itemVisualPatches = {
     { item = "Base.G36", parameters = { Icon = "G36C" } },
     { item = "Base.M9A3", parameters = { Icon = "M9" } },
     { item = "Base.PKM", parameters = { Icon = "PKP" } },
-    { item = "Base.Walther_P38", parameters = { Icon = "P38" } },
     { item = "Base.Rhino60DS", parameters = { Icon = "Rhino20DS" } },
+    { item = "Base.303Clip20", parameters = { Icon = "792x57Clip" } },
+    { item = "Base.303Drum50", parameters = { Icon = "308Drum60" } },
+    { item = "Base.BizonClip64", parameters = { Icon = "22LRDrum100" } },
+    { item = "Base.30_06Clip", parameters = { Icon = "792x57Clip" } },
+    { item = "Base.30_06Clip40", parameters = { Icon = "308Clip40" } },
+    { item = "Base.Bullets50Clip", parameters = { Icon = "308Box150" } },
+    { item = "Base.9mmClip70old", parameters = { WorldStaticModel = "Clip_9mmClip70old" } },
+    { item = "Base.9mmClip100old", parameters = { WorldStaticModel = "Clip_9mmClip100old" } },
 }
 
 Definitions.magazineMapAliases = {

@@ -1,32 +1,38 @@
 local Core = require("InventoryTetrisTransferDiagnostics/InventoryDiagnosticsCore")
 local KeyRingSupport = require("InventoryTetris/KeyRingSupport")
 local ItemContainerGrid = require("InventoryTetris/Model/ItemContainerGrid")
-local GridAutoDropSystem = require("InventoryTetris/System/GridAutoDropSystem")
 
 require("TimedActions/ISInventoryTransferAction")
 require("TimedActions/ISTimedActionQueue")
 require("TimedActions/ISEquipWeaponAction")
-require("ISUI/ISInventoryPane")
-require("ISUI/ISInventoryPaneContextMenu")
+require("TimedActions/ISWearClothing")
+require("TimedActions/ISInsertMagazine")
+require("TimedActions/ISEjectMagazine")
+require("TimedActions/ISLoadBulletsInMagazine")
 
 local Diagnostics = {}
 local PREFIX = "ITTransferDiag"
+local VERSION = "0.3.1"
 local MAX_LINES = 2500
+local MAX_LIVE_TRACES = 64
+local MAX_QUEUE_TYPES = 12
+local TRACE_TTL_MS = 45000
+local MISSING_NATIVE_MILESTONES = { 0, 250, 1000, 5000, 15000, 30000, 45000 }
+
+local installed = false
+local observerFailed = false
 local traceCounter = 0
 local lineCount = 0
-local suppressed = 0
-local installed = false
-local currentEquipIntent = nil
-local currentKeyRingIntent = nil
-local traceByItemId = {}
+local liveCount = 0
+local traceCapReported = false
+local actionTraces = {}
+local recoveryTraces = {}
+local retiredActions = {}
+local retiredRecoveryItems = {}
 
 InventoryTetrisTransferDiagnostics = InventoryTetrisTransferDiagnostics or {}
 if InventoryTetrisTransferDiagnostics.enabled == nil then
     InventoryTetrisTransferDiagnostics.enabled = true
-end
-
-local function nowMs()
-    return getTimestampMs and getTimestampMs() or 0
 end
 
 local function safeCall(callback, fallback)
@@ -35,54 +41,24 @@ local function safeCall(callback, fallback)
     return fallback
 end
 
-local function bool(value)
-    return value and "true" or "false"
+local function nowMs()
+    return safeCall(function() return getTimestampMs() end, 0)
 end
 
-local function itemId(item)
-    return item and safeCall(function() return tostring(item:getID()) end, nil) or nil
-end
+local function emit(traceId, eventName, actionType, fields)
+    if not InventoryTetrisTransferDiagnostics.enabled or lineCount >= MAX_LINES then return end
+    lineCount = lineCount + 1
+    pcall(function()
+        local safeFields = fields or {}
+        local line = Core.format(PREFIX, traceId or "SESSION", eventName, safeFields)
+        pcall(function() print(line) end)
 
-local function itemType(item)
-    return item and safeCall(function() return item:getFullType() end, nil) or "nil"
-end
-
-local function isLocalPlayer(character)
-    if not character then return false end
-    return safeCall(function()
-        return instanceof(character, "IsoPlayer") and character:isLocalPlayer()
-    end, false)
-end
-
-local function isKeyRingContainer(container)
-    return safeCall(function() return KeyRingSupport.isContainer(container) end, false)
-end
-
-local function isContainerOnPlayer(container, character)
-    if not container or not character then return false end
-    local inventory = safeCall(function() return character:getInventory() end, nil)
-    if not inventory then return false end
-    if container == inventory then return true end
-    return safeCall(function() return container:isInCharacterInventory(character) end, false)
-end
-
-local function describeContainer(container, character)
-    if not container then return "nil" end
-    local inventory = character and safeCall(function() return character:getInventory() end, nil) or nil
-    if container == inventory then return "player-main" end
-    if isKeyRingContainer(container) then
-        return isContainerOnPlayer(container, character) and "player-keyring" or "external-keyring"
-    end
-
-    local containerType = safeCall(function() return container:getType() end, "unknown")
-    if isContainerOnPlayer(container, character) then
-        local containingItem = safeCall(function() return container:getContainingItem() end, nil)
-        if containingItem then
-            return "player-nested:" .. itemType(containingItem)
+        local bridge = PZPerfDiagnostics_actionEvent
+        if type(bridge) == "function" then
+            local details = Core.details(safeFields)
+            pcall(bridge, traceId or "SESSION", eventName, actionType or "observer", details)
         end
-        return "player:" .. tostring(containerType)
-    end
-    return "external:" .. tostring(containerType)
+    end)
 end
 
 local function newTraceId()
@@ -90,566 +66,633 @@ local function newTraceId()
     return "I" .. tostring(traceCounter)
 end
 
-local function emit(traceId, eventName, fields)
-    if not InventoryTetrisTransferDiagnostics.enabled then return end
-    if lineCount >= MAX_LINES then
-        suppressed = suppressed + 1
-        if suppressed == 1 then
-            print(Core.format(PREFIX, "SESSION", "log-cap-reached", { maxLines = MAX_LINES }))
+local function reserveTrace()
+    if liveCount >= MAX_LIVE_TRACES then
+        if not traceCapReported then
+            traceCapReported = true
+            emit("SESSION", "trace-cap-reached", "observer", { maxLiveTraces = MAX_LIVE_TRACES })
         end
-        return
+        return nil
     end
-    lineCount = lineCount + 1
-    print(Core.format(PREFIX, traceId or "SESSION", eventName, fields or {}))
+    liveCount = liveCount + 1
+    if liveCount < MAX_LIVE_TRACES then traceCapReported = false end
+    return newTraceId()
 end
 
-local function rememberTrace(item, traceId)
-    local id = itemId(item)
-    if id then traceByItemId[id] = traceId end
+local function releaseTrace()
+    liveCount = math.max(0, liveCount - 1)
+    if liveCount < MAX_LIVE_TRACES then traceCapReported = false end
 end
 
-local function findRememberedTrace(item)
-    local id = itemId(item)
-    return id and traceByItemId[id] or nil
+local function itemFullType(item)
+    if not item then return "nil" end
+    return safeCall(function() return item:getFullType() end, "unknown")
 end
 
-local function queueTypes(character)
-    if not character then return {}, 0 end
-    local queue = safeCall(function() return ISTimedActionQueue.getTimedActionQueue(character) end, nil)
-    if not queue or not queue.queue then return {}, 0 end
-    local blockers = {}
-    for _, queuedAction in ipairs(queue.queue) do
-        blockers[#blockers + 1] = queuedAction.Type or "unknown"
-    end
-    return blockers, #queue.queue
+local function itemRuntimeId(item)
+    if not item then return "nil" end
+    return safeCall(function() return item:getID() end, "unknown")
 end
 
-local function transferState(action)
-    if not action or not action.item then return "missing-item" end
-    if action.destContainer and safeCall(function() return action.destContainer:contains(action.item) end, false) then
-        return "destination"
-    end
-    if action.srcContainer and safeCall(function() return action.srcContainer:contains(action.item) end, false) then
-        return "source"
-    end
-    return "neither-container"
+local function isLocalCharacter(character)
+    if not character then return false end
+    return safeCall(function()
+        return instanceof(character, "IsoPlayer") and character:isLocalPlayer()
+    end, false)
 end
 
-local function safeItemAllowed(container, item)
+local function isKeyRing(container)
+    return safeCall(function() return KeyRingSupport.isContainer(container) end, false)
+end
+
+local function containerKind(container, character)
+    if not container then return "nil" end
+    local playerInventory = character and safeCall(function() return character:getInventory() end, nil) or nil
+    if container == playerInventory then return "player-main" end
+    local onPlayer = character and safeCall(function() return container:isInCharacterInventory(character) end, false) or false
+    if isKeyRing(container) then return onPlayer and "player-keyring" or "external-keyring" end
+    if onPlayer then return "player-contained" end
+    local kind = safeCall(function() return container:getType() end, "unknown")
+    return "external:" .. tostring(kind)
+end
+
+local function contains(container, item)
     if not container or not item then return nil end
-    return safeCall(function() return container:isItemAllowed(item) end, nil)
+    return safeCall(function() return container:contains(item) end, nil)
 end
 
-local function safeRemoveAllowed(container, item)
-    if not container or not item then return nil end
-    return safeCall(function() return container:isRemoveItemAllowed(item) end, nil)
+local function itemContainer(item)
+    if not item then return nil end
+    return safeCall(function() return item:getContainer() end, nil)
 end
 
-local function safeHasRoom(container, character, item)
-    if not container or not character or not item then return nil end
-    return safeCall(function() return container:hasRoomFor(character, item) end, nil)
+local function itemEquipped(item)
+    if not item then return nil end
+    return safeCall(function() return item:isEquipped() end, nil)
 end
 
-local function validationSnapshot(action)
-    local item = action and action.item or nil
+local function itemContainsClip(item)
+    if not item or not instanceof(item, "HandWeapon") then return nil end
+    return safeCall(function() return item:isContainsClip() end, nil)
+end
+
+local function itemCurrentAmmo(item)
+    if not item then return nil end
+    return safeCall(function() return item:getCurrentAmmoCount() end, nil)
+end
+
+local function inventoryState(character, item)
+    local inventory = character and safeCall(function() return character:getInventory() end, nil) or nil
+    local playerNum = character and safeCall(function() return character:getPlayerNum() end, -1) or -1
+    local candidates = ItemContainerGrid._unpositionedItemSetsByPlayer
+        and ItemContainerGrid._unpositionedItemSetsByPlayer[playerNum] or nil
+    return {
+        weight = inventory and safeCall(function() return inventory:getCapacityWeight() end, nil) or nil,
+        effectiveCapacity = inventory and safeCall(function() return inventory:getEffectiveCapacity(character) end, nil) or nil,
+        maxWeight = inventory and safeCall(function() return inventory:getMaxWeight() end, nil) or nil,
+        overflowCandidate = candidates and candidates[item] ~= nil or false,
+    }
+end
+
+local function nativeActionState(action, character)
+    if not action or action.action == nil then return "missing" end
+    local actions = character and safeCall(function() return character:getCharacterActions() end, nil) or nil
+    if not actions then return "present" end
+    local registered = safeCall(function() return actions:contains(action.action) end, nil)
+    if registered == nil then return "present" end
+    return registered and "registered" or "unregistered"
+end
+
+local function buildQueueContext(queue)
+    local types = {}
+    local positions = {}
+    local actions = queue and queue.queue or {}
+    for index, queuedAction in ipairs(actions) do
+        types[#types + 1] = queuedAction and queuedAction.Type or "unknown"
+        positions[queuedAction] = index
+    end
+    local queueTypes, queueTypesOmitted = Core.summarizeQueueTypes(types, MAX_QUEUE_TYPES)
+    return {
+        depth = #actions,
+        positions = positions,
+        queueTypes = queueTypes,
+        queueTypesOmitted = queueTypesOmitted,
+    }
+end
+
+local function handMatch(character, getterName, item)
+    if not character or not item then return false end
+    return safeCall(function() return character[getterName](character) == item end, false)
+end
+
+local function actionSnapshot(action, queue, queueContext, character)
+    local item = action and (action.item or action.gun or action.magazine) or nil
+    local secondaryItem = action and action.gun and action.magazine or nil
     local source = action and action.srcContainer or nil
     local destination = action and action.destContainer or nil
-    local sourceContains = nil
-    if source and item then
-        sourceContains = safeCall(function() return source:contains(item) end, nil)
-    end
+    local currentContainer = itemContainer(item)
+    local inventory = inventoryState(character, item)
     return {
-        hasItem = item ~= nil,
-        hasSource = source ~= nil,
-        hasDestination = destination ~= nil,
-        sameContainer = source ~= nil and source == destination,
-        craftingConsumed = item and safeCall(function() return item:getIsCraftingConsumed() end, false) or false,
-        sourceContains = sourceContains,
-        sourceAllowsRemoval = safeRemoveAllowed(source, item),
-        destinationAllows = safeItemAllowed(destination, item),
-        destinationHasRoom = safeHasRoom(destination, action and action.character, item),
-        tetrisFits = action and action.cpiTetrisFits or nil,
+        item = item,
+        sourceContainer = source,
+        destinationContainer = destination,
+        itemFullType = itemFullType(item),
+        itemRuntimeId = itemRuntimeId(item),
+        secondaryItemFullType = itemFullType(secondaryItem),
+        secondaryItemRuntimeId = itemRuntimeId(secondaryItem),
+        secondaryItemContainer = containerKind(itemContainer(secondaryItem), character),
+        itemContainer = containerKind(currentContainer, character),
+        queuePosition = queueContext.positions[action] or 0,
+        queueDepth = queueContext.depth,
+        queueTypes = queueContext.queueTypes,
+        queueTypesOmitted = queueContext.queueTypesOmitted,
+        current = queue and queue.current == action or false,
+        nativeAction = nativeActionState(action, character),
+        started = Core.state(action and action.started),
+        maxTime = action and action.maxTime or "nil",
+        transaction = Core.transactionState(action and action.transactionId),
+        source = containerKind(source, character),
+        destination = containerKind(destination, character),
+        sourceContains = contains(source, item),
+        destinationContains = contains(destination, item),
+        sourceKeyRing = isKeyRing(source),
+        destinationKeyRing = isKeyRing(destination),
+        primaryMatch = handMatch(character, "getPrimaryHandItem", item),
+        secondaryMatch = handMatch(character, "getSecondaryHandItem", item),
+        itemEquipped = itemEquipped(item),
+        containsClip = itemContainsClip(item),
+        currentAmmo = itemCurrentAmmo(item),
+        inventoryWeight = inventory.weight,
+        inventoryEffectiveCapacity = inventory.effectiveCapacity,
+        inventoryMaxWeight = inventory.maxWeight,
+        overflowCandidate = inventory.overflowCandidate,
     }
 end
 
-local function transferFields(action)
-    local inventoryTetris = SandboxVars and SandboxVars.InventoryTetris or nil
+local function identityFields(snapshot)
     return {
-        item = itemType(action and action.item),
-        itemId = itemId(action and action.item),
-        reason = action and action.cpiMoveReason,
-        source = describeContainer(action and action.srcContainer, action and action.character),
-        destination = describeContainer(action and action.destContainer, action and action.character),
-        maxTime = action and action.maxTime,
-        useTransferTime = inventoryTetris and bool(inventoryTetris.UseItemTransferTime) or "unknown",
-        client = isClient and bool(isClient()) or "unknown",
-        enforceTetris = action and bool(action.enforceTetrisRules) or "false",
-        grid = action and action.gridIndex or "none",
+        item = snapshot.itemFullType,
+        itemId = snapshot.itemRuntimeId,
+        itemContainer = snapshot.itemContainer,
     }
 end
 
-local function installTransferTracing()
-    local oldNew = ISInventoryTransferAction.new
-    function ISInventoryTransferAction:new(character, item, source, destination, time, ...)
-        local action = oldNew(self, character, item, source, destination, time, ...)
-        if not action or not isLocalPlayer(character) then return action end
+local function queueFields(snapshot)
+    return {
+        current = Core.state(snapshot.current),
+        nativeAction = snapshot.nativeAction,
+        queueDepth = snapshot.queueDepth,
+        queuePosition = snapshot.queuePosition,
+        queueTypes = snapshot.queueTypes,
+        queueTypesOmitted = snapshot.queueTypesOmitted,
+    }
+end
 
-        local pendingEquip = currentEquipIntent and currentEquipIntent.item == item
-        local pendingKeyRing = currentKeyRingIntent and currentKeyRingIntent.itemId == itemId(item)
-        local reason = Core.classifyMove({
-            pendingEquip = pendingEquip,
-            sourceKeyRing = isKeyRingContainer(source),
-            destinationKeyRing = isKeyRingContainer(destination),
-            sourceOnPlayer = isContainerOnPlayer(source, character),
-            destinationOnPlayer = isContainerOnPlayer(destination, character),
+local function observeMissingNative(trace, snapshot, now)
+    if not snapshot.current or snapshot.nativeAction ~= "missing" then
+        trace.missingSince = nil
+        trace.missingMilestone = nil
+        return
+    end
+    if trace.missingSince == nil then
+        trace.missingSince = now
+        trace.missingMilestone = 1
+    end
+    local elapsed = math.max(0, now - trace.missingSince)
+    while trace.missingMilestone <= #MISSING_NATIVE_MILESTONES
+            and elapsed >= MISSING_NATIVE_MILESTONES[trace.missingMilestone] do
+        local milestone = MISSING_NATIVE_MILESTONES[trace.missingMilestone]
+        emit(trace.id, "missing-native-action-stall", trace.actionType, {
+            action = trace.actionType,
+            milestoneMs = milestone,
+            observedMs = elapsed,
+            queueDepth = snapshot.queueDepth,
+            queuePosition = snapshot.queuePosition,
+            queueTypes = snapshot.queueTypes,
+            queueTypesOmitted = snapshot.queueTypesOmitted,
         })
-        if not reason then return action end
-
-        action.cpiTraceId = pendingEquip and currentEquipIntent.traceId
-            or pendingKeyRing and currentKeyRingIntent.traceId
-            or newTraceId()
-        action.cpiMoveReason = reason
-        action.cpiCreatedAt = nowMs()
-        action.cpiLastMaxTime = action.maxTime
-        action.cpiLastState = transferState(action)
-        rememberTrace(item, action.cpiTraceId)
-        emit(action.cpiTraceId, "transfer-created", transferFields(action))
-        return action
-    end
-
-    local oldValidateTetrisRules = ISInventoryTransferAction.validateTetrisRules
-    if oldValidateTetrisRules then
-        function ISInventoryTransferAction:validateTetrisRules(...)
-            local result = oldValidateTetrisRules(self, ...)
-            self.cpiTetrisFits = result
-            if self.cpiTraceId and result == false and not self.cpiLoggedTetrisFailure then
-                self.cpiLoggedTetrisFailure = true
-                emit(self.cpiTraceId, "tetris-validation-failed", transferFields(self))
-            end
-            return result
-        end
-    end
-
-    local oldIsValid = ISInventoryTransferAction.isValid
-    function ISInventoryTransferAction:isValid(...)
-        local result = oldIsValid(self, ...)
-        if self.cpiTraceId and result == false then
-            local snapshot = validationSnapshot(self)
-            local reason = Core.validationReason(snapshot)
-            if self.cpiLastValidationReason ~= reason then
-                self.cpiLastValidationReason = reason
-                local fields = transferFields(self)
-                fields.failure = reason
-                fields.state = transferState(self)
-                emit(self.cpiTraceId, "transfer-validation-failed", fields)
-            end
-        end
-        return result
-    end
-
-    local oldStart = ISInventoryTransferAction.start
-    function ISInventoryTransferAction:start(...)
-        if self.cpiTraceId then
-            self.cpiStartedAt = nowMs()
-            local fields = transferFields(self)
-            fields.queueWaitMs = self.cpiEnqueuedAt and (self.cpiStartedAt - self.cpiEnqueuedAt) or "unknown"
-            fields.blockers = self.cpiBlockers or "none"
-            fields.state = transferState(self)
-            emit(self.cpiTraceId, "transfer-start", fields)
-        end
-        local result = oldStart(self, ...)
-        if self.cpiTraceId then
-            local fields = transferFields(self)
-            fields.transactionId = self.transactionId or 0
-            fields.waitForServer = bool(self.maxTime == -1 or (self.action and safeCall(function() return self.action:getWaitForFinished() end, false)))
-            emit(self.cpiTraceId, "transfer-started", fields)
-        end
-        return result
-    end
-
-    local oldUpdate = ISInventoryTransferAction.update
-    function ISInventoryTransferAction:update(...)
-        local result = oldUpdate(self, ...)
-        if not self.cpiTraceId then return result end
-
-        if self.maxTime ~= self.cpiLastMaxTime then
-            emit(self.cpiTraceId, "transfer-duration-changed", {
-                before = self.cpiLastMaxTime,
-                after = self.maxTime,
-                transactionId = self.transactionId or 0,
-                elapsedMs = self.cpiStartedAt and (nowMs() - self.cpiStartedAt) or "unknown",
-            })
-            self.cpiLastMaxTime = self.maxTime
-        end
-
-        local state = transferState(self)
-        if state ~= self.cpiLastState then
-            emit(self.cpiTraceId, "transfer-state-changed", {
-                before = self.cpiLastState,
-                after = state,
-                transactionId = self.transactionId or 0,
-                elapsedMs = self.cpiStartedAt and (nowMs() - self.cpiStartedAt) or "unknown",
-            })
-            self.cpiLastState = state
-        end
-
-        if isClient and isClient() and self.transactionId and self.transactionId > 0 then
-            if not self.cpiTransactionRejected and isItemTransactionRejected and isItemTransactionRejected(self.transactionId) then
-                self.cpiTransactionRejected = true
-                emit(self.cpiTraceId, "transfer-server-rejected", {
-                    transactionId = self.transactionId,
-                    elapsedMs = self.cpiStartedAt and (nowMs() - self.cpiStartedAt) or "unknown",
-                    state = state,
-                })
-            elseif not self.cpiTransactionDone and isItemTransactionDone and isItemTransactionDone(self.transactionId) then
-                self.cpiTransactionDone = true
-                emit(self.cpiTraceId, "transfer-server-confirmed", {
-                    transactionId = self.transactionId,
-                    elapsedMs = self.cpiStartedAt and (nowMs() - self.cpiStartedAt) or "unknown",
-                    state = state,
-                })
-            end
-        end
-        return result
-    end
-
-    local oldTransferItem = ISInventoryTransferAction.transferItem
-    function ISInventoryTransferAction:transferItem(item, ...)
-        local startedAt = nowMs()
-        local result = oldTransferItem(self, item, ...)
-        if self.cpiTraceId then
-            local gridFound = false
-            if self.destContainer and not isKeyRingContainer(self.destContainer) then
-                local grid = safeCall(function()
-                    return ItemContainerGrid.FindInstance(self.destContainer, self.character:getPlayerNum())
-                end, nil)
-                gridFound = grid and safeCall(function() return grid:findStackByItem(item) ~= nil end, false) or false
-            end
-            emit(self.cpiTraceId, "transfer-item-applied", {
-                item = itemType(item),
-                itemId = itemId(item),
-                elapsedMs = nowMs() - startedAt,
-                state = transferState(self),
-                keyRingDestination = bool(isKeyRingContainer(self.destContainer)),
-                destinationGridFound = bool(gridFound),
-            })
-        end
-        return result
-    end
-
-    local oldPerform = ISInventoryTransferAction.perform
-    function ISInventoryTransferAction:perform(...)
-        local beforeQueue = self.queueList and #self.queueList or 0
-        local result = oldPerform(self, ...)
-        if self.cpiTraceId then
-            emit(self.cpiTraceId, "transfer-perform", {
-                elapsedMs = self.cpiStartedAt and (nowMs() - self.cpiStartedAt) or "unknown",
-                totalElapsedMs = self.cpiCreatedAt and (nowMs() - self.cpiCreatedAt) or "unknown",
-                state = transferState(self),
-                mergedBefore = beforeQueue,
-                mergedAfter = self.queueList and #self.queueList or 0,
-                transactionId = self.transactionId or 0,
-            })
-        end
-        return result
-    end
-
-    local oldStop = ISInventoryTransferAction.stop
-    function ISInventoryTransferAction:stop(...)
-        if self.cpiTraceId then
-            emit(self.cpiTraceId, "transfer-stopped", {
-                elapsedMs = self.cpiStartedAt and (nowMs() - self.cpiStartedAt) or "unknown",
-                state = transferState(self),
-                transactionId = self.transactionId or 0,
-                failure = Core.validationReason(validationSnapshot(self)),
-            })
-        end
-        return oldStop(self, ...)
+        trace.missingMilestone = trace.missingMilestone + 1
     end
 end
 
-local function installQueueTracing()
-    local oldAdd = ISTimedActionQueue.add
-    ISTimedActionQueue.add = function(action)
-        if not action or not action.cpiTraceId then
-            return oldAdd(action)
-        end
-
-        local blockers, countBefore = queueTypes(action.character)
-        action.cpiEnqueuedAt = nowMs()
-        action.cpiBlockers = Core.summarizeBlockers(blockers)
-        local result = oldAdd(action)
-        local queue = safeCall(function() return ISTimedActionQueue.getTimedActionQueue(action.character) end, nil)
-        local index = queue and safeCall(function() return queue:indexOf(action) end, -1) or -1
-        emit(action.cpiTraceId, index == -1 and "action-not-enqueued" or "action-enqueued", {
-            action = action.Type or "unknown",
-            queueBefore = countBefore,
-            queuePosition = index,
-            blockers = action.cpiBlockers,
+local function emitActionTransitions(trace, before, after, now)
+    if before.current ~= after.current then
+        emit(trace.id, "current-changed", trace.actionType, {
+            action = trace.actionType, before = Core.state(before.current), after = Core.state(after.current),
         })
-        return result
     end
+    if before.nativeAction ~= after.nativeAction then
+        emit(trace.id, "native-action-changed", trace.actionType, {
+            action = trace.actionType, before = before.nativeAction, after = after.nativeAction,
+        })
+    end
+    if before.started ~= after.started then
+        emit(trace.id, "started-changed", trace.actionType, {
+            action = trace.actionType, before = before.started, after = after.started,
+        })
+    end
+    if before.maxTime ~= after.maxTime then
+        emit(trace.id, "max-time-changed", trace.actionType, {
+            action = trace.actionType, before = before.maxTime, after = after.maxTime,
+        })
+    end
+    if before.transaction ~= after.transaction then
+        emit(trace.id, "transaction-changed", trace.actionType, {
+            action = trace.actionType, before = before.transaction, after = after.transaction,
+        })
+    end
+    if before.sourceContains ~= after.sourceContains or before.destinationContains ~= after.destinationContains then
+        emit(trace.id, "container-membership-changed", trace.actionType, {
+            action = trace.actionType,
+            sourceBefore = Core.state(before.sourceContains),
+            sourceAfter = Core.state(after.sourceContains),
+            destinationBefore = Core.state(before.destinationContains),
+            destinationAfter = Core.state(after.destinationContains),
+        })
+    end
+    if before.item ~= after.item then
+        local fields = identityFields(after)
+        fields.action = trace.actionType
+        emit(trace.id, "item-changed", trace.actionType, fields)
+    elseif before.itemContainer ~= after.itemContainer then
+        emit(trace.id, "item-container-changed", trace.actionType, {
+            action = trace.actionType, before = before.itemContainer, after = after.itemContainer,
+        })
+    end
+    if before.queuePosition ~= after.queuePosition or before.queueDepth ~= after.queueDepth
+            or before.queueTypes ~= after.queueTypes or before.queueTypesOmitted ~= after.queueTypesOmitted then
+        local fields = queueFields(after)
+        fields.action = trace.actionType
+        emit(trace.id, "queue-changed", trace.actionType, fields)
+    end
+    if before.primaryMatch ~= after.primaryMatch or before.secondaryMatch ~= after.secondaryMatch then
+        emit(trace.id, "hand-membership-changed", trace.actionType, {
+            action = trace.actionType,
+            primary = Core.state(after.primaryMatch),
+            secondary = Core.state(after.secondaryMatch),
+        })
+    end
+    if before.itemEquipped ~= after.itemEquipped then
+        emit(trace.id, "worn-state-changed", trace.actionType, {
+            action = trace.actionType,
+            equipped = Core.state(after.itemEquipped),
+        })
+    end
+    if before.containsClip ~= after.containsClip or before.currentAmmo ~= after.currentAmmo then
+        emit(trace.id, "magazine-state-changed", trace.actionType, {
+            action = trace.actionType,
+            containsClip = Core.state(after.containsClip),
+            currentAmmo = after.currentAmmo or "nil",
+        })
+    end
+    if before.secondaryItemContainer ~= after.secondaryItemContainer then
+        emit(trace.id, "magazine-container-changed", trace.actionType, {
+            action = trace.actionType,
+            magazine = after.secondaryItemFullType,
+            magazineId = after.secondaryItemRuntimeId,
+            before = before.secondaryItemContainer,
+            after = after.secondaryItemContainer,
+        })
+    end
+    if before.inventoryWeight ~= after.inventoryWeight
+            or before.inventoryEffectiveCapacity ~= after.inventoryEffectiveCapacity
+            or before.overflowCandidate ~= after.overflowCandidate then
+        emit(trace.id, "inventory-capacity-state-changed", trace.actionType, {
+            action = trace.actionType,
+            inventoryWeight = after.inventoryWeight or "nil",
+            inventoryEffectiveCapacity = after.inventoryEffectiveCapacity or "nil",
+            inventoryMaxWeight = after.inventoryMaxWeight or "nil",
+            overflowCandidate = Core.state(after.overflowCandidate),
+        })
+    end
+    observeMissingNative(trace, after, now)
 end
 
-local function installEquipTracing()
-    local oldEquipWeapon = ISInventoryPaneContextMenu.equipWeapon
-    ISInventoryPaneContextMenu.equipWeapon = function(weapon, primary, twoHands, playerNum, alwaysTurnOn)
-        local playerObj = getSpecificPlayer(playerNum)
-        local traceId = newTraceId()
-        currentEquipIntent = { traceId = traceId, item = weapon }
-        rememberTrace(weapon, traceId)
-        local blockers, queueDepth = queueTypes(playerObj)
-        emit(traceId, "equip-intent", {
-            item = itemType(weapon),
-            itemId = itemId(weapon),
-            source = describeContainer(weapon and weapon:getContainer(), playerObj),
-            primary = bool(primary),
-            twoHands = bool(twoHands),
-            queueDepth = queueDepth,
-            blockers = Core.summarizeBlockers(blockers),
-        })
-
-        local ok, result = pcall(oldEquipWeapon, weapon, primary, twoHands, playerNum, alwaysTurnOn)
-        currentEquipIntent = nil
-        if not ok then
-            emit(traceId, "equip-intent-error", { error = "wrapped-handler-failed" })
-            error(result)
-        end
-        return result
-    end
-
-    local oldNew = ISEquipWeaponAction.new
-    function ISEquipWeaponAction:new(character, item, maxTimeInit, primary, twoHands, alwaysTurnOn, ...)
-        local action = oldNew(self, character, item, maxTimeInit, primary, twoHands, alwaysTurnOn, ...)
-        if not action or not isLocalPlayer(character) then return action end
-        local traceId = currentEquipIntent and currentEquipIntent.item == item and currentEquipIntent.traceId
-            or findRememberedTrace(item)
-            or newTraceId()
-        action.cpiTraceId = traceId
-        action.cpiCreatedAt = nowMs()
-        emit(traceId, "equip-action-created", {
-            item = itemType(item),
-            itemId = itemId(item),
-            maxTime = action.maxTime,
-            fromHotbar = bool(action.fromHotbar),
-            primary = bool(action.primary),
-            twoHands = bool(action.twoHands),
-        })
-        return action
-    end
-
-    local oldStart = ISEquipWeaponAction.start
-    function ISEquipWeaponAction:start(...)
-        if self.cpiTraceId then
-            self.cpiStartedAt = nowMs()
-            emit(self.cpiTraceId, "equip-start", {
-                item = itemType(self.item),
-                queueWaitMs = self.cpiEnqueuedAt and (self.cpiStartedAt - self.cpiEnqueuedAt) or "unknown",
-                blockers = self.cpiBlockers or "none",
-                maxTime = self.maxTime,
-                duration = safeCall(function() return self:getDuration() end, "unknown"),
-                fromHotbar = bool(self.fromHotbar),
-                alreadyEquipped = bool(safeCall(function() return self:isAlreadyEquipped() end, false)),
-            })
-        end
-        return oldStart(self, ...)
-    end
-
-    local oldComplete = ISEquipWeaponAction.complete
-    function ISEquipWeaponAction:complete(...)
-        local result = oldComplete(self, ...)
-        if self.cpiTraceId then
-            emit(self.cpiTraceId, "equip-complete", {
-                item = itemType(self.item),
-                result = result,
-                elapsedMs = self.cpiStartedAt and (nowMs() - self.cpiStartedAt) or "unknown",
-                totalElapsedMs = self.cpiCreatedAt and (nowMs() - self.cpiCreatedAt) or "unknown",
-                primaryMatch = bool(self.character and self.character:getPrimaryHandItem() == self.item),
-                secondaryMatch = bool(self.character and self.character:getSecondaryHandItem() == self.item),
-            })
-        end
-        return result
-    end
-
-    local oldStop = ISEquipWeaponAction.stop
-    function ISEquipWeaponAction:stop(...)
-        if self.cpiTraceId then
-            emit(self.cpiTraceId, "equip-stopped", {
-                item = itemType(self.item),
-                elapsedMs = self.cpiStartedAt and (nowMs() - self.cpiStartedAt) or "unknown",
-                itemInMainInventory = bool(self.character and self.character:getInventory():contains(self.item)),
-            })
-        end
-        return oldStop(self, ...)
-    end
+local function hasStartEvidence(action, snapshot)
+    return snapshot.started == "true"
+        or snapshot.nativeAction == "registered"
+        or (action and action.action ~= nil)
 end
 
-local function rowItem(pane, row)
-    local entry = pane and pane.items and pane.items[row] or nil
-    if not entry then return nil, 0 end
-    if safeCall(function() return instanceof(entry, "InventoryItem") end, false) then return entry, 1 end
-    if not entry.items then return nil, 0 end
-    local count = 0
-    local first = nil
-    for index, item in ipairs(entry.items) do
-        if index > 1 and safeCall(function() return instanceof(item, "InventoryItem") end, false) then
-            count = count + 1
-            first = first or item
-        end
-    end
-    return first, count
-end
+local function observeAction(action, queue, queueContext, character, observed, now)
+    observed[action] = true
+    if retiredActions[action] then return end
+    local actionType = action and action.Type or nil
+    if not Core.isObservedActionType(actionType) then return end
 
-local function actualItems(value)
-    if not value then return {} end
-    return safeCall(function() return ISInventoryPane.getActualItems(value) end, {}) or {}
-end
-
-local function keyRingSignature(pane)
-    local ids = {}
-    local inventory = pane and pane.inventory or nil
-    local items = inventory and inventory:getItems() or nil
-    if items then
-        for index = 0, items:size() - 1 do
-            ids[#ids + 1] = itemId(items:get(index)) or "nil"
-        end
-    end
-    table.sort(ids)
-    return table.concat(ids, ","), #ids
-end
-
-local function installKeyRingUiTracing()
-    local oldRefresh = ISInventoryPane.refreshContainer
-    function ISInventoryPane:refreshContainer(...)
-        local result = oldRefresh(self, ...)
-        if self.tetrisVanillaPane then
-            local signature, count = keyRingSignature(self)
-            if signature ~= self.cpiKeyRingSignature then
-                self.cpiKeyRingSignature = signature
-                emit(self.cpiKeyRingTraceId or "KEYRING", "keyring-rows-refreshed", {
-                    count = count,
-                    itemIds = signature == "" and "none" or signature,
-                    splitByKeyId = bool(self.tetrisSplitKeysById),
-                })
-            end
-        end
-        return result
-    end
-
-    local oldMouseDown = ISInventoryPane.onMouseDown
-    function ISInventoryPane:onMouseDown(x, y, ...)
-        if not self.tetrisVanillaPane then return oldMouseDown(self, x, y, ...) end
-        local row = math.floor((y - self.headerHgt) / self.itemHgt) + 1
-        local item, groupCount = rowItem(self, row)
-        local traceId = newTraceId()
-        self.cpiKeyRingTraceId = traceId
-        self.cpiKeyRingMouseItemId = itemId(item)
-        emit(traceId, "keyring-mouse-down", {
-            row = row,
-            item = itemType(item),
-            itemId = itemId(item),
-            groupCount = groupCount,
-            mouseOverBefore = self.mouseOverOption or 0,
-            source = describeContainer(self.inventory, getSpecificPlayer(self.player)),
-        })
-        local result = oldMouseDown(self, x, y, ...)
-        emit(traceId, "keyring-mouse-down-result", {
-            mouseOverAfter = self.mouseOverOption or 0,
-            dragging = bool(ISMouseDrag and ISMouseDrag.dragging),
-            draggingFocusIsPane = bool(ISMouseDrag and ISMouseDrag.draggingFocus == self),
-        })
-        return result
-    end
-
-    local oldMouseUp = ISInventoryPane.onMouseUp
-    function ISInventoryPane:onMouseUp(x, y, ...)
-        if not self.tetrisVanillaPane then return oldMouseUp(self, x, y, ...) end
-        local traceId = self.cpiKeyRingTraceId or newTraceId()
-        local draggedItems = actualItems(ISMouseDrag and ISMouseDrag.dragging or nil)
-        local draggedItem = draggedItems[1]
-        local selectedItem, groupCount = rowItem(self, self.mouseOverOption or 0)
-        currentKeyRingIntent = {
-            traceId = traceId,
-            itemId = itemId(draggedItem) or self.cpiKeyRingMouseItemId or itemId(selectedItem),
+    local trace = actionTraces[action]
+    if not trace then
+        local traceId = reserveTrace()
+        if not traceId then return end
+        local snapshot = actionSnapshot(action, queue, queueContext, character)
+        trace = {
+            id = traceId,
+            actionType = actionType,
+            firstObservedAt = now,
+            snapshot = snapshot,
+            character = character,
+            everStarted = hasStartEvidence(action, snapshot),
         }
-        emit(traceId, "keyring-mouse-up", {
-            row = self.mouseOverOption or 0,
-            selectedItem = itemType(selectedItem),
-            selectedItemId = itemId(selectedItem),
-            groupCount = groupCount,
-            draggedItem = itemType(draggedItem),
-            draggedItemId = itemId(draggedItem),
-            draggingFocusIsPane = bool(ISMouseDrag and ISMouseDrag.draggingFocus == self),
-            hasDragOwner = bool(ISMouseDrag and ISMouseDrag.dragOwner),
-        })
-        local ok, result = pcall(oldMouseUp, self, x, y, ...)
-        currentKeyRingIntent = nil
-        if not ok then
-            emit(traceId, "keyring-mouse-up-error", { error = "wrapped-handler-failed" })
-            error(result)
-        end
-        emit(traceId, "keyring-mouse-up-result", {
-            mouseOver = self.mouseOverOption or 0,
-            dragging = bool(ISMouseDrag and ISMouseDrag.dragging),
-            itemStillInKeyRing = bool(draggedItem and self.inventory:contains(draggedItem)),
-        })
-        return result
+        actionTraces[action] = trace
+        local fields = identityFields(snapshot)
+        fields.action = actionType
+        fields.source = snapshot.source
+        fields.destination = snapshot.destination
+        fields.sourceContains = Core.state(snapshot.sourceContains)
+        fields.destinationContains = Core.state(snapshot.destinationContains)
+        fields.sourceKeyRing = Core.state(snapshot.sourceKeyRing)
+        fields.destinationKeyRing = Core.state(snapshot.destinationKeyRing)
+        fields.started = snapshot.started
+        fields.maxTime = snapshot.maxTime
+        fields.transaction = snapshot.transaction
+        fields.magazine = snapshot.secondaryItemFullType
+        fields.magazineId = snapshot.secondaryItemRuntimeId
+        fields.magazineContainer = snapshot.secondaryItemContainer
+        fields.itemEquipped = Core.state(snapshot.itemEquipped)
+        fields.containsClip = Core.state(snapshot.containsClip)
+        fields.currentAmmo = snapshot.currentAmmo or "nil"
+        fields.inventoryWeight = snapshot.inventoryWeight or "nil"
+        fields.inventoryEffectiveCapacity = snapshot.inventoryEffectiveCapacity or "nil"
+        fields.inventoryMaxWeight = snapshot.inventoryMaxWeight or "nil"
+        fields.overflowCandidate = Core.state(snapshot.overflowCandidate)
+        local queued = queueFields(snapshot)
+        for key, value in pairs(queued) do fields[key] = value end
+        emit(trace.id, "action-first-observed", actionType, fields)
+        observeMissingNative(trace, snapshot, now)
+        return
     end
 
-    local oldTransferItemsByWeight = ISInventoryPane.transferItemsByWeight
-    function ISInventoryPane:transferItemsByWeight(items, container, ...)
-        if not self.tetrisVanillaPane then
-            return oldTransferItemsByWeight(self, items, container, ...)
-        end
-        local traceId = currentKeyRingIntent and currentKeyRingIntent.traceId or self.cpiKeyRingTraceId or newTraceId()
-        local count = #actualItems(items)
-        emit(traceId, "keyring-transfer-request", {
-            count = count,
-            source = describeContainer(self.inventory, getSpecificPlayer(self.player)),
-            destination = describeContainer(container, getSpecificPlayer(self.player)),
+    local snapshot = actionSnapshot(action, queue, queueContext, character)
+    emitActionTransitions(trace, trace.snapshot, snapshot, now)
+    trace.everStarted = trace.everStarted or hasStartEvidence(action, snapshot)
+    trace.snapshot = snapshot
+    if now - trace.firstObservedAt >= TRACE_TTL_MS then
+        emit(trace.id, "action-trace-timeout", trace.actionType, {
+            action = trace.actionType,
+            ageMs = now - trace.firstObservedAt,
+            current = Core.state(snapshot.current),
+            nativeAction = snapshot.nativeAction,
         })
-        return oldTransferItemsByWeight(self, items, container, ...)
+        actionTraces[action] = nil
+        retiredActions[action] = true
+        releaseTrace()
     end
 end
 
-local function installAutoDropTracing()
-    local function wrapAttempt(name, eventName)
-        local old = GridAutoDropSystem[name]
-        if not old then return end
-        GridAutoDropSystem[name] = function(item, ...)
-            local traceId = findRememberedTrace(item)
-            local startedAt = nowMs()
-            local result = old(item, ...)
-            if traceId then
-                emit(traceId, eventName, {
-                    item = itemType(item),
-                    itemId = itemId(item),
-                    result = bool(result),
-                    elapsedMs = nowMs() - startedAt,
-                    container = describeContainer(item and item:getContainer(), getSpecificPlayer(0)),
-                })
-            end
-            return result
+local function finalActionOutcome(trace)
+    local snapshot = trace.snapshot
+    if trace.actionType == "ISInventoryTransferAction" then
+        return Core.transferOutcome(snapshot.sourceContains, snapshot.destinationContains, snapshot.transaction)
+    end
+    local itemContained = itemContainer(snapshot.item) ~= nil
+    if trace.actionType == "ISEquipWeaponAction" then
+        return Core.equipOutcome(snapshot.primaryMatch, snapshot.secondaryMatch, itemContained)
+    end
+    if trace.actionType == "ISWearClothing" then
+        return Core.wearOutcome(snapshot.itemEquipped, itemContained)
+    end
+    return Core.magazineOutcome(trace.actionType, snapshot.containsClip, snapshot.primaryMatch)
+end
+
+local function finishRemovedActions(observed, now)
+    for action, trace in pairs(actionTraces) do
+        if not observed[action] then
+            local snapshot = trace.snapshot
+            trace.everStarted = trace.everStarted
+                or action.started == true
+                or action.action ~= nil
+                or nativeActionState(action, trace.character) == "registered"
+            snapshot.itemContainer = containerKind(itemContainer(snapshot.item), trace.character)
+            snapshot.sourceContains = contains(snapshot.sourceContainer, snapshot.item)
+            snapshot.destinationContains = contains(snapshot.destinationContainer, snapshot.item)
+            snapshot.primaryMatch = handMatch(trace.character, "getPrimaryHandItem", snapshot.item)
+            snapshot.secondaryMatch = handMatch(trace.character, "getSecondaryHandItem", snapshot.item)
+            snapshot.itemEquipped = itemEquipped(snapshot.item)
+            snapshot.containsClip = itemContainsClip(snapshot.item)
+            snapshot.currentAmmo = itemCurrentAmmo(snapshot.item)
+            snapshot.secondaryItemContainer = containerKind(itemContainer(action and action.magazine), trace.character)
+            snapshot.transaction = Core.transactionState(action and action.transactionId)
+            local inventory = inventoryState(trace.character, snapshot.item)
+            snapshot.inventoryWeight = inventory.weight
+            snapshot.inventoryEffectiveCapacity = inventory.effectiveCapacity
+            snapshot.inventoryMaxWeight = inventory.maxWeight
+            snapshot.overflowCandidate = inventory.overflowCandidate
+            emit(trace.id, "action-removed", trace.actionType, {
+                action = trace.actionType,
+                ageMs = now - trace.firstObservedAt,
+                outcome = finalActionOutcome(trace),
+                sourceContains = Core.state(snapshot.sourceContains),
+                destinationContains = Core.state(snapshot.destinationContains),
+                primary = Core.state(snapshot.primaryMatch),
+                secondary = Core.state(snapshot.secondaryMatch),
+                transaction = snapshot.transaction,
+                itemEquipped = Core.state(snapshot.itemEquipped),
+                containsClip = Core.state(snapshot.containsClip),
+                currentAmmo = snapshot.currentAmmo or "nil",
+                magazineContainer = snapshot.secondaryItemContainer,
+                everStarted = Core.state(trace.everStarted),
+                inventoryWeight = snapshot.inventoryWeight or "nil",
+                inventoryEffectiveCapacity = snapshot.inventoryEffectiveCapacity or "nil",
+                inventoryMaxWeight = snapshot.inventoryMaxWeight or "nil",
+                overflowCandidate = Core.state(snapshot.overflowCandidate),
+            })
+            actionTraces[action] = nil
+            releaseTrace()
         end
     end
+    for action, _ in pairs(retiredActions) do
+        if not observed[action] then retiredActions[action] = nil end
+    end
+end
 
-    wrapAttempt("_handleDropItem", "tetris-auto-drop-to-floor")
-    wrapAttempt("_attemptToForcePositionItem", "tetris-recovery-position")
-    wrapAttempt("_attemptToForceEquipItem", "tetris-recovery-equip")
+local function recoverySnapshot(item, candidate, character)
+    local source = type(candidate) == "table" and candidate.sourceContainer or nil
+    local current = itemContainer(item)
+    return {
+        item = item,
+        itemFullType = itemFullType(item),
+        itemRuntimeId = itemRuntimeId(item),
+        sourceContainer = source,
+        source = containerKind(source, character),
+        currentContainer = current,
+        current = containerKind(current, character),
+        sourceContains = contains(source, item),
+        currentContains = contains(current, item),
+        sourceKeyRing = isKeyRing(source),
+        currentKeyRing = isKeyRing(current),
+    }
+end
+
+local function observeRecovery(item, candidate, character, observed, now)
+    observed[item] = true
+    if retiredRecoveryItems[item] then return end
+    local snapshot = recoverySnapshot(item, candidate, character)
+    local trace = recoveryTraces[item]
+    if not trace then
+        local traceId = reserveTrace()
+        if not traceId then return end
+        trace = { id = traceId, firstObservedAt = now, phase = "candidate", snapshot = snapshot }
+        recoveryTraces[item] = trace
+        emit(trace.id, "recovery-candidate", "InventoryTetrisRecovery", {
+            item = snapshot.itemFullType,
+            itemId = snapshot.itemRuntimeId,
+            source = snapshot.source,
+            current = snapshot.current,
+            sourceContains = Core.state(snapshot.sourceContains),
+            currentContains = Core.state(snapshot.currentContains),
+            sourceKeyRing = Core.state(snapshot.sourceKeyRing),
+            currentKeyRing = Core.state(snapshot.currentKeyRing),
+        })
+        return
+    end
+
+    local before = trace.snapshot
+    if before.sourceContains ~= snapshot.sourceContains or before.currentContains ~= snapshot.currentContains
+            or before.current ~= snapshot.current or before.sourceKeyRing ~= snapshot.sourceKeyRing
+            or before.currentKeyRing ~= snapshot.currentKeyRing then
+        emit(trace.id, "recovery-state-changed", "InventoryTetrisRecovery", {
+            item = snapshot.itemFullType,
+            itemId = snapshot.itemRuntimeId,
+            source = snapshot.source,
+            current = snapshot.current,
+            sourceContains = Core.state(snapshot.sourceContains),
+            currentContains = Core.state(snapshot.currentContains),
+            sourceKeyRing = Core.state(snapshot.sourceKeyRing),
+            currentKeyRing = Core.state(snapshot.currentKeyRing),
+        })
+    end
+    trace.snapshot = snapshot
+
+    local elapsed = now - trace.firstObservedAt
+    local phase = Core.recoveryPhase(elapsed)
+    if phase ~= trace.phase then
+        trace.phase = phase
+        if phase == "remains" then
+            emit(trace.id, "recovery-remains", "InventoryTetrisRecovery", {
+                item = snapshot.itemFullType, itemId = snapshot.itemRuntimeId, ageMs = elapsed,
+                source = snapshot.source, current = snapshot.current,
+            })
+        elseif phase == "timeout" then
+            emit(trace.id, "recovery-timeout", "InventoryTetrisRecovery", {
+                item = snapshot.itemFullType, itemId = snapshot.itemRuntimeId, ageMs = elapsed,
+                source = snapshot.source, current = snapshot.current,
+            })
+            recoveryTraces[item] = nil
+            retiredRecoveryItems[item] = true
+            releaseTrace()
+        end
+    end
+end
+
+local function recoveryOutcome(trace, character)
+    local snapshot = recoverySnapshot(trace.snapshot.item, { sourceContainer = trace.snapshot.sourceContainer }, character)
+    if snapshot.currentKeyRing then return "keyring-protected", snapshot end
+    if snapshot.currentContainer and snapshot.currentContainer ~= snapshot.sourceContainer then return "moved", snapshot end
+    if snapshot.sourceContains == true then return "repositioned-or-protected", snapshot end
+    if not snapshot.currentContainer then return "detached", snapshot end
+    return "absent-from-source", snapshot
+end
+
+local function finishRemovedRecovery(observed, charactersByPlayer, now)
+    for item, trace in pairs(recoveryTraces) do
+        if not observed[item] then
+            local character = charactersByPlayer[trace.playerNum or -1]
+            local outcome, snapshot = recoveryOutcome(trace, character)
+            emit(trace.id, "recovery-resolved", "InventoryTetrisRecovery", {
+                item = snapshot.itemFullType,
+                itemId = snapshot.itemRuntimeId,
+                ageMs = now - trace.firstObservedAt,
+                outcome = outcome,
+                source = snapshot.source,
+                current = snapshot.current,
+            })
+            recoveryTraces[item] = nil
+            releaseTrace()
+        end
+    end
+    for item, _ in pairs(retiredRecoveryItems) do
+        if not observed[item] then retiredRecoveryItems[item] = nil end
+    end
+end
+
+local function localQueues()
+    local values = {}
+    for _, queue in pairs(ISTimedActionQueue.queues or {}) do
+        local character = queue and queue.character or nil
+        if isLocalCharacter(character) then
+            values[#values + 1] = {
+                queue = queue,
+                character = character,
+                playerNum = safeCall(function() return character:getPlayerNum() end, -1),
+            }
+        end
+    end
+    table.sort(values, function(left, right) return left.playerNum < right.playerNum end)
+    return values
+end
+
+local function observeTick()
+    local now = nowMs()
+    local observedActions = {}
+    local observedRecovery = {}
+    local charactersByPlayer = {}
+    local queues = localQueues()
+
+    for _, value in ipairs(queues) do
+        local queue = value.queue
+        local queueContext = buildQueueContext(queue)
+        charactersByPlayer[value.playerNum] = value.character
+        for _, action in ipairs(queue.queue or {}) do
+            observeAction(action, queue, queueContext, value.character, observedActions, now)
+        end
+        if queue.current and not observedActions[queue.current] then
+            observeAction(queue.current, queue, queueContext, value.character, observedActions, now)
+        end
+    end
+    finishRemovedActions(observedActions, now)
+
+    for playerNum, itemSet in pairs(ItemContainerGrid._unpositionedItemSetsByPlayer or {}) do
+        local character = charactersByPlayer[playerNum]
+        if not character then
+            character = safeCall(function() return getSpecificPlayer(playerNum) end, nil)
+            if not isLocalCharacter(character) then character = nil end
+            if character then charactersByPlayer[playerNum] = character end
+        end
+        if character and type(itemSet) == "table" then
+            for item, candidate in pairs(itemSet) do
+                observeRecovery(item, candidate, character, observedRecovery, now)
+                local trace = recoveryTraces[item]
+                if trace then trace.playerNum = playerNum end
+            end
+        end
+    end
+    finishRemovedRecovery(observedRecovery, charactersByPlayer, now)
+end
+
+local function onTick()
+    local ok = pcall(observeTick)
+    if not ok and not observerFailed then
+        observerFailed = true
+        emit("SESSION", "observer-error", "observer", { status = "disabled-until-next-tick" })
+    elseif ok then
+        observerFailed = false
+    end
 end
 
 function Diagnostics.install()
     if installed then return end
     installed = true
-    installTransferTracing()
-    installQueueTracing()
-    installEquipTracing()
-    installKeyRingUiTracing()
-    installAutoDropTracing()
-    emit("SESSION", "installed", {
-        version = "0.1.0",
-        enabled = bool(InventoryTetrisTransferDiagnostics.enabled),
+    Events.OnTick.Add(onTick)
+    ITTransferDiag_mark = function(label)
+        emit("MARK", "explicit-marker", "marker", { label = label })
+    end
+    emit("SESSION", "installed", "observer", {
+        version = VERSION,
+        mode = "observer-only",
         maxLines = MAX_LINES,
+        maxLiveTraces = MAX_LIVE_TRACES,
+        queueTypeLimit = MAX_QUEUE_TYPES,
+        traceTtlMs = TRACE_TTL_MS,
     })
 end
 

@@ -4,6 +4,7 @@ local TestFramework = require("TestFramework/TestFramework")
 local TestUtils = require("TestFramework/TestUtils")
 local Definitions = require("GaelGunStoreLootDiversification/Definitions")
 local Diversification = require("GaelGunStoreLootDiversification/FirearmSpawnDiversification")
+local LootStatePolicy = require("GaelGunStoreLootDiversification/LootStatePolicy")
 
 local function assertNear(actual, expected)
     TestUtils.assert(math.abs(actual - expected) < 0.000001)
@@ -107,6 +108,27 @@ TestFramework.registerTestModule("Gael Gun Store Ammo & Storage Fixes", "Firearm
             total = total + record.weight
         end
         assertNear(total, 20)
+    end
+
+    function Tests.test_loot_state_policy_keeps_zombie_firearms_worse_than_secure_storage()
+        TestUtils.assert(LootStatePolicy.conditionFor("zombie", 10, 0) == 2)
+        TestUtils.assert(LootStatePolicy.conditionFor("zombie", 10, 9999) == 6)
+        TestUtils.assert(LootStatePolicy.conditionFor("secure", 10, 0) == 7)
+        TestUtils.assert(LootStatePolicy.conditionFor("secure", 10, 9999) == 10)
+    end
+
+    function Tests.test_magazine_policy_is_varied_and_never_empty()
+        TestUtils.assert(LootStatePolicy.magazineAmmoFor("zombie", 30, 0) == 3)
+        TestUtils.assert(LootStatePolicy.magazineAmmoFor("zombie", 30, 9999) == 18)
+        TestUtils.assert(LootStatePolicy.magazineAmmoFor("secure", 30, 0) == 15)
+        TestUtils.assert(LootStatePolicy.magazineAmmoFor("secure", 30, 9999) == 30)
+        TestUtils.assert(LootStatePolicy.magazineAmmoFor("world", 1, 0) == 1)
+    end
+
+    function Tests.test_secure_container_context_is_narrow_and_case_insensitive()
+        TestUtils.assert(LootStatePolicy.contextForContainer("policestorage", "locker") == "secure")
+        TestUtils.assert(LootStatePolicy.contextForContainer("GunStore", "displaycase") == "secure")
+        TestUtils.assert(LootStatePolicy.contextForContainer("kitchen", "counter") == "world")
     end
 
     return Tests

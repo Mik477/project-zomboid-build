@@ -85,7 +85,7 @@ TestFramework.registerTestModule("Gael Gun Store Core Fixes", "Definitions", fun
         TestUtils.assert(#Definitions.magazineMapRemovals == 3)
         TestUtils.assert(#Definitions.lootClones == 3)
         TestUtils.assert(#Definitions.obsoleteLootItems == 2)
-        TestUtils.assert(#Definitions.itemVisualPatches == 6)
+        TestUtils.assert(#Definitions.itemVisualPatches == 13)
         TestUtils.assert(#Definitions.magazineFamilyExpansions == 1)
 
         local obsolete = Definitions.toSet(Definitions.obsoleteLootItems)
@@ -106,8 +106,15 @@ TestFramework.registerTestModule("Gael Gun Store Core Fixes", "Definitions", fun
         TestUtils.assert(patches["Base.G36"].parameters.Icon == "G36C")
         TestUtils.assert(patches["Base.M9A3"].parameters.Icon == "M9")
         TestUtils.assert(patches["Base.PKM"].parameters.Icon == "PKP")
-        TestUtils.assert(patches["Base.Walther_P38"].parameters.Icon == "P38")
         TestUtils.assert(patches["Base.Rhino60DS"].parameters.Icon == "Rhino20DS")
+        TestUtils.assert(patches["Base.303Clip20"].parameters.Icon == "792x57Clip")
+        TestUtils.assert(patches["Base.303Drum50"].parameters.Icon == "308Drum60")
+        TestUtils.assert(patches["Base.BizonClip64"].parameters.Icon == "22LRDrum100")
+        TestUtils.assert(patches["Base.30_06Clip"].parameters.Icon == "792x57Clip")
+        TestUtils.assert(patches["Base.30_06Clip40"].parameters.Icon == "308Clip40")
+        TestUtils.assert(patches["Base.Bullets50Clip"].parameters.Icon == "308Box150")
+        TestUtils.assert(patches["Base.9mmClip70old"].parameters.WorldStaticModel == "Clip_9mmClip70old")
+        TestUtils.assert(patches["Base.9mmClip100old"].parameters.WorldStaticModel == "Clip_9mmClip100old")
     end
 
     return Tests

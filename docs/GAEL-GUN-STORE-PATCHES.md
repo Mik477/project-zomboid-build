@@ -105,6 +105,18 @@ The recursive transformer covers:
 
 It transforms only arrays that already contain a configured firearm. Ordinary bags that never spawned guns remain unchanged. Existing items, player-owned bags, explored containers, and saved vehicle inventories are not rewritten; only newly generated loot uses the diversified pools. RifleCase1 gains the same two generic 5.56 magazine weights used by RifleCase4 so its magazine-fed Scout Elite replacement has a matching magazine.
 
+### Generated firearm condition and magazine fill
+
+Version `0.2.0` applies context-aware state only when new loot is generated. The server/SP `OnFillContainer` handler runs after Gael's context-free condition handler, while an exact Build 42.20.3 ZombieBuddy patch runs after `IsoZombie.DoZombieInventory(boolean)` finishes. Both paths recurse into newly generated nested bags and write unique per-item markers; they never scan an explored world, a player inventory, or persisted items.
+
+| Source context | Firearm condition | Detachable magazine fill |
+| --- | ---: | ---: |
+| Gun/police/military/security/locker storage | 70-100% | 50-100% |
+| Other generated world containers | 45-90% | 25-90% |
+| Zombie death inventory | 20-60% | 10-60% |
+
+All ranges vary per item and clamp to the item's own capacity/condition maximum. A magazine must be a non-weapon item with positive `MaxAmmo` and a non-empty `GunType` list; this avoids Build 42's unusable `ItemTag.MAGAZINE` path and keeps generated police-locker magazines non-empty. The Java path is multiplayer-client inert and ignores reanimated players and fake-dead zombies.
+
 ## Weapon visual compatibility
 
 Version `0.4.0` reuses close installed icons for six spawnable Gael weapons whose configured icon names did not exist in individual textures or active texture packs:
@@ -127,6 +139,8 @@ Missing magazine attachment visuals are restored as local script aliases that re
 - vintage 70-round 9mm magazine → existing vintage 100-round stick silhouette (four SMGs);
 - MG 131 feed device → existing ammunition-box silhouette;
 - G43 40-round magazine → existing 7.92x57mm magazine silhouette.
+
+Version `1.0.1` also audits all 66 effective feed devices and replaces unresolved inventory icons without copying assets. `.303` box/drum, Bizon, saved obsolete `.30-06`, and MG 131 devices reuse the closest installed Gael box, drum, or feed-box art. The vintage 70/100-round 9mm devices retain their inventory art but point their ground representation at existing valid model names.
 
 Intentional invisible helpers (`TempNilItem`, `AttachmentPlaceholder`, `Rocket_explosion`, and `HE_explosion`) remain untouched. MWP `IconsForTexture`, vanilla UI-pack icons, optional world models, and Explosives GLB meshes are valid and were excluded from fixes.
 
@@ -189,7 +203,8 @@ For runtime testing, deploy both managed compatibility mods:
 
 ```powershell
 ./scripts/Sync-ManagedFiles.ps1 -Direction ToLocal -Mod GaelGunStoreCoreFixes
-./scripts/Sync-ManagedFiles.ps1 -Direction ToLocal -Mod GaelGunStoreLootDiversification
+./scripts/Install-CompatibilityPatches.ps1 -WhatIf
+./scripts/Install-CompatibilityPatches.ps1
 ./scripts/Sync-ManagedFiles.ps1 -Direction ToLocal -Mod GaelGunStoreInventoryTetrisCompatibility
 ./scripts/Sync-ManagedFiles.ps1 -Direction ToLocal -Mod ItemVisualCompatibilityFixes
 ./scripts/Sync-ManagedFiles.ps1 -Direction ToLocal -Mod CompactProximityInventory
@@ -205,9 +220,10 @@ Use a disposable hosted world and test:
 6. Load, fire, eject, and swap magazines on MG 131, G43, Grizzly50AE, M39, Walther P38, pistol-grip shotgun, SVDK, MAT-49, PPSh-41, M9A3, UMP9, and G36; confirm every mapped device uses its intended capacity and visual part.
 7. Generate untouched gun/ammo containers under representative Gael loot settings; confirm restored devices can appear and obsolete `.30-06` magazines no longer do. Existing saved `.30-06` magazines should remain unloadable.
 8. Inspect newly generated police/army/gun-store loot, direct vehicle trunks and gloveboxes, Pistol/Revolver/Rifle/Shotgun cases, police bags, survivor/bandit bags, and a gun-bearing bag nested in another container. Confirm Gael replacements appear, M9/JS-2000 remain occasional rather than dominant, companion ammo fits, and ordinary non-gun bags remain unchanged.
-9. Put 5.56 drums and 9mm drums in main inventory and nested bags, then test reload-key, gun-context, and magazine-context insertion on M16, CZ805/BREN, MP5, MP5K, and MP5SD without first using the radial selector. Confirm Lee-Enfield loads only `.303 British`, keeps ten internal rounds, and never offers `.308 Winchester (7.62x51mm)` ammunition.
-10. Inspect Benelli M3, G36, M9A3, PKM, Walther P38, and Rhino 60DS inventory art; Authentic Smoke Bomb and Bandits Bucket; restored magazine attachments; and Headhunter scope/sling/bipod/suppressor combinations. Generate fresh Gael loot and confirm Minigun no longer appears while existing saved copies remain loadable.
-11. Check client/server logs for firearm-diversification, visual-patch, and magazine-selection errors, then confirm no missing-item/map warnings, duplicate reload actions, red-question-mark icons, invisible parts, or new `ActionManager.sendAction`, `ContainerID.set`, or `Unable to resolve container location` errors.
+9. In a disposable fresh area, compare secure gun/police lockers, ordinary static storage, and newly killed zombies. Confirm firearm condition follows the documented bands, magazines vary without being empty, nested new bags are initialized, and moving/reopening items does not reroll them.
+10. Put 5.56 drums and 9mm drums in main inventory and nested bags, then test reload-key, gun-context, and magazine-context insertion on M16, CZ805/BREN, MP5, MP5K, and MP5SD without first using the radial selector. Confirm Lee-Enfield loads only `.303 British`, keeps ten internal rounds, and never offers `.308 Winchester (7.62x51mm)` ammunition.
+11. Inspect Benelli M3, G36, M9A3, PKM, Walther P38, and Rhino 60DS inventory art; `.303` box/drum, Bizon, saved `.30-06`, MG 131, and vintage 9mm feed devices; Authentic Smoke Bomb and Bandits Bucket; restored magazine attachments; and Headhunter scope/sling/bipod/suppressor combinations. Generate fresh Gael loot and confirm Minigun no longer appears while existing saved copies remain loadable.
+12. Check client/server logs for firearm-diversification, loot-state, visual-patch, and magazine-selection errors, then confirm no missing-item/map warnings, duplicate reload actions, red-question-mark icons, invisible parts, or new `ActionManager.sendAction`, `ContainerID.set`, or `Unable to resolve container location` errors.
 
 ## Workshop patch assessment
 

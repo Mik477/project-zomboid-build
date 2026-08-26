@@ -5,6 +5,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'BetterVehicleDynamicsPayload.ps1')
 if (-not $LocalConfigurationPath) {
     $LocalConfigurationPath = Join-Path $repositoryRoot 'config\local.json'
 }
@@ -30,6 +31,7 @@ $gameRoot = [IO.Path]::GetFullPath([string]$localConfiguration.projectZomboid.ga
 $workshopRoot = [IO.Path]::GetFullPath([string]$localConfiguration.projectZomboid.workshopPath)
 $sourceRoot = Join-Path $workshopRoot '3728775267\mods\BetterVehicleDynamics\B42.20_Manual_Install\zombie'
 $targetRoot = Join-Path $gameRoot 'zombie'
+$expectedPayloadHashes = Get-BetterVehicleDynamicsExpectedPayloadHashes
 
 if (-not (Test-Path -LiteralPath $gameRoot -PathType Container)) {
     throw 'The discovered Project Zomboid game directory does not exist.'
@@ -76,81 +78,85 @@ function Assert-ChildPath {
     }
 }
 
-$sourceFiles = @(Get-ChildItem -LiteralPath $sourceRoot -File -Recurse -Force)
-if ($sourceFiles.Count -eq 0) {
-    throw 'The BVD manual-install payload contains no files.'
-}
-$unexpectedFiles = @($sourceFiles | Where-Object Extension -ne '.class')
-if ($unexpectedFiles.Count -gt 0) {
-    throw 'The BVD manual-install payload contains an unexpected non-class file; review the Workshop update before installing it.'
-}
-
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $backupRoot = Join-Path ([string]$localConfiguration.projectZomboid.userPath) "Backups\project-zomboid-build\bvd-$timestamp"
+$snapshotRoot = Join-Path $env:LOCALAPPDATA "project-zomboid-build\bvd-payload-$PID-$([Guid]::NewGuid().ToString('N'))"
 $records = [Collections.Generic.List[object]]::new()
 $copyCount = 0
 $replaceCount = 0
 
-foreach ($sourceFile in $sourceFiles) {
-    $relativePath = Get-RelativeFilePath -BasePath $sourceRoot -Path $sourceFile.FullName
-    $destinationPath = Join-Path $targetRoot $relativePath
-    Assert-ChildPath -Root $targetRoot -Path $destinationPath
-    $sourceHash = (Get-FileHash -LiteralPath $sourceFile.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-    $destinationExisted = Test-Path -LiteralPath $destinationPath -PathType Leaf
-    $destinationHash = if ($destinationExisted) {
-        (Get-FileHash -LiteralPath $destinationPath -Algorithm SHA256).Hash.ToLowerInvariant()
-    }
-    else {
-        $null
-    }
-    $needsCopy = $sourceHash -ne $destinationHash
-    $backupRelativePath = $null
+try {
+    $sourceFiles = @(New-BetterVehicleDynamicsPayloadSnapshot `
+        -SourceRoot $sourceRoot `
+        -SnapshotRoot $snapshotRoot `
+        -ExpectedPayloadHashes $expectedPayloadHashes)
 
-    if ($needsCopy -and $PSCmdlet.ShouldProcess($destinationPath, 'Install Better Vehicle Dynamics Java class')) {
-        if ($destinationExisted) {
-            $backupRelativePath = Join-Path 'replaced' $relativePath
-            $backupPath = Join-Path $backupRoot $backupRelativePath
-            Assert-ChildPath -Root $backupRoot -Path $backupPath
-            New-Item -ItemType Directory -Path (Split-Path -Parent $backupPath) -Force | Out-Null
-            Copy-Item -LiteralPath $destinationPath -Destination $backupPath -Force
-            $replaceCount++
+    foreach ($sourceFile in $sourceFiles) {
+        $relativePath = Get-RelativeFilePath -BasePath $snapshotRoot -Path $sourceFile.FullName
+        $destinationPath = Join-Path $targetRoot $relativePath
+        Assert-ChildPath -Root $targetRoot -Path $destinationPath
+        $sourceHash = (Get-FileHash -LiteralPath $sourceFile.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        $destinationExisted = Test-Path -LiteralPath $destinationPath -PathType Leaf
+        $destinationHash = if ($destinationExisted) {
+            (Get-FileHash -LiteralPath $destinationPath -Algorithm SHA256).Hash.ToLowerInvariant()
         }
-        New-Item -ItemType Directory -Path (Split-Path -Parent $destinationPath) -Force | Out-Null
-        Copy-Item -LiteralPath $sourceFile.FullName -Destination $destinationPath -Force
-        $installedHash = (Get-FileHash -LiteralPath $destinationPath -Algorithm SHA256).Hash.ToLowerInvariant()
-        if ($installedHash -ne $sourceHash) {
-            throw "BVD verification failed after copying $relativePath."
+        else {
+            $null
         }
-        $copyCount++
+        $needsCopy = $sourceHash -ne $destinationHash
+        $backupRelativePath = $null
+
+        if ($needsCopy -and $PSCmdlet.ShouldProcess($destinationPath, 'Install Better Vehicle Dynamics Java class')) {
+            if ($destinationExisted) {
+                $backupRelativePath = Join-Path 'replaced' $relativePath
+                $backupPath = Join-Path $backupRoot $backupRelativePath
+                Assert-ChildPath -Root $backupRoot -Path $backupPath
+                New-Item -ItemType Directory -Path (Split-Path -Parent $backupPath) -Force | Out-Null
+                Copy-Item -LiteralPath $destinationPath -Destination $backupPath -Force
+                $replaceCount++
+            }
+            New-Item -ItemType Directory -Path (Split-Path -Parent $destinationPath) -Force | Out-Null
+            Copy-Item -LiteralPath $sourceFile.FullName -Destination $destinationPath -Force
+            $installedHash = (Get-FileHash -LiteralPath $destinationPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($installedHash -ne $sourceHash) {
+                throw "BVD verification failed after copying $relativePath."
+            }
+            $copyCount++
+        }
+
+        $records.Add([pscustomobject]@{
+            path = $relativePath.Replace('\', '/')
+            sourceSha256 = $sourceHash
+            existedBefore = $destinationExisted
+            previousSha256 = $destinationHash
+            backupPath = if ($backupRelativePath) { $backupRelativePath.Replace('\', '/') } else { $null }
+            changed = $needsCopy
+        })
     }
 
-    $records.Add([pscustomobject]@{
-        path = $relativePath.Replace('\', '/')
-        sourceSha256 = $sourceHash
-        existedBefore = $destinationExisted
-        previousSha256 = $destinationHash
-        backupPath = if ($backupRelativePath) { $backupRelativePath.Replace('\', '/') } else { $null }
-        changed = $needsCopy
-    })
-}
+    if ($copyCount -gt 0) {
+        New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
+        [pscustomobject]@{
+            schemaVersion = 1
+            installedAt = (Get-Date).ToString('o')
+            workshopItemId = '3728775267'
+            gameVersion = $localVersion
+            steamBuildId = $localBuildId
+            destination = 'ProjectZomboid/zombie'
+            files = @($records)
+        } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $backupRoot 'install-manifest.json') -Encoding utf8
+    }
 
-if ($copyCount -gt 0) {
-    New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
     [pscustomobject]@{
-        schemaVersion = 1
-        installedAt = (Get-Date).ToString('o')
-        workshopItemId = '3728775267'
-        gameVersion = $localVersion
-        steamBuildId = $localBuildId
-        destination = 'ProjectZomboid/zombie'
-        files = @($records)
-    } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $backupRoot 'install-manifest.json') -Encoding utf8
+        SourceFiles = $sourceFiles.Count
+        InstalledOrUpdated = $copyCount
+        ReplacedAndBackedUp = $replaceCount
+        AlreadyCurrent = $sourceFiles.Count - @($records | Where-Object changed).Count
+        BackupManifest = if ($copyCount -gt 0) { Join-Path $backupRoot 'install-manifest.json' } else { $null }
+    }
 }
-
-[pscustomobject]@{
-    SourceFiles = $sourceFiles.Count
-    InstalledOrUpdated = $copyCount
-    ReplacedAndBackedUp = $replaceCount
-    AlreadyCurrent = $sourceFiles.Count - @($records | Where-Object changed).Count
-    BackupManifest = if ($copyCount -gt 0) { Join-Path $backupRoot 'install-manifest.json' } else { $null }
+finally {
+    if (Test-Path -LiteralPath $snapshotRoot) {
+        Remove-Item -LiteralPath $snapshotRoot -Recurse -Force -WhatIf:$false
+    }
 }

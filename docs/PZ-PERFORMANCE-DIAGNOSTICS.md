@@ -6,10 +6,11 @@ Date: 2026-08-24
 
 `PZPerformanceDiagnostics` is the measurement-only first stage of the modpack performance patch. It targets Project Zomboid `42.20.3`, Steam build `24775755`, and ZombieBuddy `2.3.2`.
 
-It is designed to answer two concrete questions from one short session:
+It is designed to answer three concrete questions from one short session:
 
 1. Why can vehicle entry take an abnormally long time after Vanilla Vehicles Animated and `VASinked` are enabled?
 2. Why does frame pacing collapse while driving or running quickly into unvisited map cells?
+3. Where do inventory transfer/equip actions or the shared timed-action queue stop progressing?
 
 The mod does not skip actions, alter timeouts, preload chunks, delete map data, change vehicle state, or modify a Workshop file. It records enough correlated evidence to choose a narrow performance-changing patch afterward.
 
@@ -44,6 +45,8 @@ The worst 0.3.0 session was additionally dominated by an unrelated selected-mod 
 
 The 691.7-second 0.9.25 capture then identified the current vehicle-entry regression in diagnostics itself. Five vehicle-use attempts reached `PZPerformanceDiagnostics/Bootstrap.lua`, queried `ISBaseTimedAction:getJobDelta()` before `begin()` created `self.action`, and rethrew queue-start failures through both `ISVehicleMenu.onEnterAux` and `onEnter`. This aborted the first path/open/enter/close queue and caused repeated clicks plus error popups. Completed entries into `Base.ModernCarLightsMeadeSheriff` reached the Java engine successfully: all four nested/overloaded `BaseVehicle.enter` observations returned true in 0.04–1.212 ms. Version 0.1.2 therefore retires the Lua action tracer rather than changing VVA or VAS. One first-entry update had an unassigned 1.163-second wall stall; the second entry was clean, so that isolated outlier requires a post-fix paired capture before any further patch.
 
+Later August 24 sessions failed at the shared `ISBaseTimedAction.begin()` seam for inventory transfers, Fancy Handwork, and vehicle actions with `ReturnValues.put(ReturnValues.java:61)`. Version 0.1.3 removed the remaining universal `LuaEventManager.triggerEvent` and `KahluaThread.pcallvoid` diagnostics hooks so targeted measurements no longer weave every Lua callback. Version 0.2.0 adds observer-only queue timelines: it reads existing local-player queue/action fields and event outcomes but never calls or replaces timed-action methods. The simultaneous packet-cache warning storm remains a separate measured TYL/networking issue because prior callback suppression broke authoritative vegetation generation.
+
 ## Instrumentation
 
 ### Frame pacing
@@ -77,21 +80,21 @@ The exact reviewed Build 42.20.3 seams are timed:
 
 Main-thread chunk phases are retained at `3 ms` or above. Worker phases are retained at `12 ms` or above. Failures and blam states are always retained.
 
-### Lua attribution
+### Lua execution boundary
 
-While `LuaEventManager.triggerEvent` is dispatching an event, the Java patch times each top-level Lua closure invoked through Kahlua. Callbacks taking at least `2 ms` are written with:
+Version 0.2.0 does not patch `LuaEventManager`, Kahlua callback execution, Java timed-action lifecycle, `ReturnValues`, or `MethodArguments`. Its Lua observers subscribe to standard events and inspect existing tables without replacing handlers. This deliberately gives up live Lua source attribution so diagnostics cannot alter the shared execution path used by timed actions. The summarizer still reads `slow-callback` events from historical 0.1.2-and-earlier traces.
 
-- event name;
-- source filename;
-- function/prototype name;
-- first source line;
-- duration and exception, if any.
+### Inventory actions
 
-Version 0.1.2 no longer inventories callbacks from Lua at game start. Source attribution comes from the passive Java event-dispatch and Kahlua callback probes.
+`InventoryTetrisTransferDiagnostics` 0.3.1 observes existing local-player queue entries for transfer, equip, Wear, vanilla insert/eject, magazine loading, and Gael magazine swap terminal actions. Transition-only `[ITTransferDiag]` lines and matching JSONL action events record queue position/shape, current/native-action state, start/max-time/transaction state, source/destination membership, key-ring involvement, main-inventory weight/capacity, Tetris overflow candidacy, worn state, clip/ammo state, magazine-container transitions, state at queue removal, and Inventory Tetris recovery-candidate resolution. Queue shape is computed once per player/tick and detailed work is capped at 64 live traces. A current action that remains without its native Java action emits bounded `0/250/1000/5000/15000/30000/45000 ms` milestones, directly exposing failures during `ISBaseTimedAction.begin()` without invoking `getJobDelta()`. Magazine items are read only through magazine-safe state methods; firearm-only clip queries are limited to `HandWeapon`. The observer does not call Tetris fit validation and therefore cannot report grid occupancy or a synchronous rejection that never creates a queue entry.
+
+The observer cannot prove that an unobserved UI click was accepted or identify the exact branch inside `isValid()`, because doing so would require the unsafe UI/action wrappers that were retired. An explicit `ITTransferDiag_mark("label")` marker is available for such attempts.
 
 ### Vehicle entry
 
-Version 0.1.2 intentionally does not replace `ISVehicleMenu`, `ISTimedActionQueue`, or any path/open/enter/close timed-action method. The retired Lua tracer changed the call environment it was supposed to observe and could abort queue construction.
+Versions 0.1.2 and later intentionally do not replace `ISVehicleMenu`, `ISTimedActionQueue`, or any path/open/enter/close timed-action method. The retired Lua tracer changed the call environment it was supposed to observe and could abort queue construction.
+
+The 0.2.0 Lua observer reads local-player entry/exit queues and correlates `ISPathFindAction` vehicle-seat goals, `ISEnterVehicle`, `ISExitVehicle`, `OnEnterVehicle`, and `OnExitVehicle`. It emits only queue/state transitions plus 2/5/15-second unchanged-state milestones. Each event includes bounded queue shape, current/native-action state, seat occupancy, door state, and enter/exit animation variables.
 
 The remaining Java advice passively records:
 
@@ -100,7 +103,7 @@ The remaining Java advice passively records:
 - vehicle-part animations;
 - frame state after entry, including player mode, vehicle speed/script, CPU versus wall time, GC deltas, and nearest chunk work.
 
-These signals distinguish an engine rejection or slow `BaseVehicle.enter` from a later frame stall without modifying the vehicle action chain. They do not provide per-action queue timelines; a future queue tracer must use an engine-supported observer seam rather than Lua method replacement.
+Together, the observer and Java signals distinguish pre-engine queue construction/progression, animation stalls, engine rejection or slow `BaseVehicle.enter`, and later frame stalls without modifying the vehicle action chain.
 
 ## Log format and safety limits
 
@@ -116,7 +119,8 @@ The actual cache root is obtained from Project Zomboid through ZombieBuddy rathe
 - The game thread never waits for the file writer.
 - The writer is a daemon and flushes every second or 32 lines.
 - A session accepts at most `60,000` lines; queue/full-limit drops are counted in `PZPerfDiagnostics_status()`.
-- The log contains local coordinates/chunk IDs because they are required to match stream failures. It does not intentionally record usernames, server addresses, passwords, save databases, or inventory contents.
+- Generic action events are capped at `10,000`; the Inventory Tetris observer independently caps console/bridge output at `2,500` lines and `64` live traces.
+- The log contains its local absolute path, local coordinates/chunk IDs, vehicle identifiers, and diagnostic item full types/runtime IDs because they are required to correlate failures. The path can contain the Windows profile name. It does not intentionally record server addresses, passwords, save databases, item display names, item mod data, or full inventory/container contents; redact paths and identifiers before sharing excerpts.
 - Raw logs stay local and must not be committed.
 
 ## Build and install
@@ -125,30 +129,34 @@ Close Project Zomboid and the hosted test server. Then run:
 
 ```powershell
 ./scripts/Test-LuaPatchMods.ps1
+./scripts/Test-InventoryTetrisTransferDiagnostics.ps1
 ./scripts/Test-PZPerformanceDiagnostics.ps1
+./scripts/Sync-ManagedFiles.ps1 -Direction ToLocal -Mod InventoryTetrisTransferDiagnostics -WhatIf
+./scripts/Sync-ManagedFiles.ps1 -Direction ToLocal -Mod InventoryTetrisTransferDiagnostics
 ./scripts/Install-PZPerformanceDiagnostics.ps1 -WhatIf
 ./scripts/Install-PZPerformanceDiagnostics.ps1
 ```
 
 The selected KnownAndCollected/SwapIt dependency set is now represented in the manifest. Preview the profile apply and confirm that its removals are limited to redundant `ETO_B` and the retired catch-all patch IDs before using the guarded `-AllowRemovals` flow in `docs/PATCH-MOD-LAYOUT.md`.
 
-Install the complete replacement patch package and run the one-time `Migrate-PatchModLayout.ps1` flow in `docs/PATCH-MOD-LAYOUT.md` before applying the new manifest. The diagnostics build verifies the exact game version, Steam build, and `projectzomboid.jar` SHA-256; compiles with the pinned external ECJ; and writes its generated JAR only to the local user mod or package staging tree. The migration backs up and removes the retired `PZPerformanceFixes` directory so it cannot load beside the focused Lua mods.
+Install the complete replacement patch package and run the one-time `Migrate-PatchModLayout.ps1` flow in `docs/PATCH-MOD-LAYOUT.md` before applying the new manifest. The diagnostics build verifies the exact game version, Steam build, `projectzomboid.jar`, and `ZombieBuddy.jar` SHA-256 fingerprints; compiles with the pinned external ECJ; and writes its generated JAR only to the local user mod or package staging tree. The migration backs up and removes the retired `PZPerformanceFixes` directory so it cannot load beside the focused Lua mods.
 
-Every client must have ZombieBuddy and fully restart after deployment. Approve the diagnostics client JAR plus the `TrashAndCorpsesSafetyFix` and `SecretZCommandRegistrationFix` common JAR fingerprints; no active common TYL gate remains.
+Every client must have ZombieBuddy and fully restart after deployment. Approve the diagnostics client JAR plus the `KahluaObjectPoolConcurrencyFix`, `GaelGunStoreLootDiversification`, `TrashAndCorpsesSafetyFix`, and `SecretZCommandRegistrationFix` common JAR fingerprints; no active common TYL gate remains.
 
 ## Short reproduction session
 
 Use the normal `servertest1` test world and keep the run to roughly 5–10 minutes.
 
 1. Start the game, join the hosted test world, and confirm the console prints `[PZPerformanceDiagnostics] ... enabled` plus the JSONL path.
-2. Enter the same VVA `Base.ModernCarLightsMeadeSheriff` on the first click at least three times, exiting between attempts.
-3. Enter and exit one DAMN-managed KI5 vehicle at least three times.
-4. Run or sprint across an already visited area for about 30 seconds as a control.
-5. Drive the same vehicle through an already visited area for about one minute.
-6. Drive into genuinely unvisited cells for two to three minutes at the speed that normally causes stutter. If practical, pass near the area containing the known CRC failures without deliberately modifying the save.
-7. Exit to the menu normally, then close the game so the shutdown hook drains and flushes the queue.
+2. Repeatedly transfer single items and stacks between the player inventory and a nearby container until at least 20 timed actions complete.
+3. Enter the same VVA `Base.ModernCarLightsMeadeSheriff` on the first click at least three times, exiting between attempts.
+4. Enter and exit one DAMN-managed KI5 vehicle at least three times.
+5. Run or sprint across an already visited area for about 30 seconds as a control.
+6. Drive the same vehicle through an already visited area for about one minute.
+7. Drive into genuinely unvisited cells for two to three minutes at the speed that normally causes stutter. If practical, pass near the area containing the known CRC failures without deliberately modifying the save.
+8. Exit to the menu normally, then close the game so the shutdown hook drains and flushes the queue.
 
-The vehicle fix is accepted only if every attempt builds the normal queue on the first click and the console contains no `PZ Performance Diagnostics).onEnter`, `onEnterAux`, premature `getJobDelta`, or vehicle-chain `ReturnValues.put` error. Stop the test if diagnostics cause a crash, queue drops remain sustained, or vehicle behavior changes. Disabling `PZPerformanceDiagnostics` removes all runtime behavior; it writes no save data.
+The diagnostics rework is accepted only if inventory transfers complete, every vehicle attempt builds the normal queue on the first click, and the console contains no `PZ Performance Diagnostics).onEnter`, `onEnterAux`, premature `getJobDelta`, or timed-action `ReturnValues.put` error. Stop the test if diagnostics cause a crash, queue drops remain sustained, or inventory/vehicle behavior changes. Disabling both diagnostics mods removes their observers; neither writes save data.
 
 ## Summarize and interpret
 
@@ -167,12 +175,14 @@ Or provide a specific session:
 The report ranks:
 
 - frame/update/render spikes, including GC and the nearest chunk event;
-- Lua callbacks by total captured time and maximum duration;
+- historical Lua callbacks by total captured time and maximum duration, when present in an older trace;
 - chunk phases by maximum duration and failures;
+- inventory/equip action trace timelines;
+- observer-only vehicle queue attempt timelines;
 - passive `BaseVehicle.enter` and vehicle-animation observations;
 - the last rolling window.
 
-The summarizer continues to understand historical action timelines and manual markers, but version 0.1.2 no longer emits them.
+The summarizer continues to understand historical manual markers and Lua callback events. Current diagnostics emit action and vehicle queue timelines but do not emit Lua callback attribution.
 
 The 0.4.0 safe-baseline run is accepted only when:
 
@@ -187,10 +197,10 @@ The 0.4.0 safe-baseline run is accepted only when:
 
 Interpret passive vehicle evidence as follows:
 
-- no `base-enter` after a visible delay: the delay occurred before the engine entry call, but passive diagnostics cannot identify the individual queue action;
+- no `base-enter` after a visible delay: inspect the vehicle queue timeline to identify the last path/door/entry state reached before the engine call;
 - slow `base-enter`: the engine entry call itself is involved;
 - `base-enter entered=false`: seat/state rejection inside `BaseVehicle.enter`;
-- fast successful `base-enter` followed by a wall-heavy update spike: entry succeeded and a later blocking path is involved; compare CPU, GC, Lua, and chunk fields before assigning a cause;
+- fast successful `base-enter` followed by a wall-heavy update spike: entry succeeded and a later blocking path is involved; compare CPU, GC, and chunk fields before assigning a cause;
 - passenger/part animations without a successful `base-enter`: animation or synchronization work occurred without completed engine entry.
 
 Interpret fast-travel spikes as follows:
@@ -199,7 +209,7 @@ Interpret fast-travel spikes as follows:
 - slow `worker-total`/`load-or-create` without a main-frame spike: storage/network is slow but sufficiently asynchronous;
 - `loaded=false`, `blam=true`, or CRC errors: damaged chunk recovery is involved;
 - GC time rising with the frame spike: allocation/heap pressure is involved;
-- one Lua source repeatedly dominates `OnTick`/`OnPlayerUpdate`: target that mod callback before changing streaming;
+- a historical trace shows one Lua source repeatedly dominating `OnTick`/`OnPlayerUpdate`: target that mod callback before changing streaming; current traces require separate mod-specific attribution;
 - render spikes with low update/chunk/Lua time: investigate models, textures, vegetation, and GPU-side work.
 
 The next performance-changing patch should address only the dominant measured path and should be compared against the same route at least three times.
