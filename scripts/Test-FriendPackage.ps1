@@ -41,6 +41,7 @@ Require-Tokens -Path (Join-Path $PSScriptRoot 'Build-Package.ps1') -Tokens @(
 )
 Require-Tokens -Path (Join-Path $PSScriptRoot 'Install-Package.ps1') -Tokens @(
     'Resolve-ProjectZomboidInstallation',
+    'Windows PowerShell did not provide the installer script path',
     "Windows did not provide a user-profile path",
     'IsNullOrWhiteSpace($installDirectory)',
     'IsNullOrWhiteSpace($steamBuildId)',

@@ -1,6 +1,6 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [string]$PackageRoot = $PSScriptRoot,
+    [string]$PackageRoot,
     [string]$ZomboidUserPath,
     [string]$GamePath,
     [string]$WorkshopPath,
@@ -11,6 +11,21 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($PackageRoot)) {
+    $installerScriptPath = $PSCommandPath
+    if ([string]::IsNullOrWhiteSpace($installerScriptPath)) {
+        $installerScriptPath = $MyInvocation.MyCommand.Path
+    }
+    if ([string]::IsNullOrWhiteSpace($installerScriptPath)) {
+        throw 'Windows PowerShell did not provide the installer script path. Fully extract the ZIP, then run Install.cmd from the extracted folder.'
+    }
+    $PackageRoot = Split-Path -Parent $installerScriptPath
+}
+if ([string]::IsNullOrWhiteSpace($PackageRoot)) {
+    throw 'The package folder could not be determined. Fully extract the ZIP, then run Install.cmd from the extracted folder.'
+}
+$PackageRoot = [IO.Path]::GetFullPath($PackageRoot)
+
 if ([string]::IsNullOrWhiteSpace($ZomboidUserPath)) {
     $userProfilePath = $env:USERPROFILE
     if ([string]::IsNullOrWhiteSpace($userProfilePath)) {

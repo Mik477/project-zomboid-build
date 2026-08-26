@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.11.2
+
+- Fixed the remaining Downloads-folder bootstrap failure by resolving the package root inside the script body from `PSCommandPath`/`MyInvocation`, rather than relying on `PSScriptRoot` during parameter-default evaluation.
+- Expanded the focused bootstrap regression to pass both package and profile paths as empty values from an extracted Downloads-style directory and require a controlled post-discovery stop.
+
 ## 0.11.1
 
 - Fixed the friend installer failing before discovery when Windows PowerShell supplied an empty user-profile path. Profile resolution now falls back to `USERPROFILE` and otherwise reports an actionable error instead of passing an empty value to `Join-Path`.

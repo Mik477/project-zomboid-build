@@ -7,7 +7,8 @@ $testRoot = Join-Path ([IO.Path]::GetTempPath()) "project-zomboid-build-bootstra
 $previousUserProfile = $env:USERPROFILE
 
 try {
-    $packageRoot = Join-Path $testRoot 'Downloads\project-zomboid-build-0.11.1'
+    $manifest = Get-Content -LiteralPath (Join-Path $repositoryRoot 'config\modpack.json') -Raw | ConvertFrom-Json
+    $packageRoot = Join-Path $testRoot "Downloads\project-zomboid-build-$($manifest.package.version)"
     $otherWorkingDirectory = Join-Path $testRoot 'Elsewhere'
     $syntheticUserProfile = Join-Path $testRoot 'Profile'
     New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
@@ -22,6 +23,7 @@ try {
     try {
         try {
             & (Join-Path $packageRoot 'Install.ps1') `
+                -PackageRoot ([string]::Empty) `
                 -ZomboidUserPath ([string]::Empty) `
                 -GamePath (Join-Path $testRoot 'missing-game') `
                 -WorkshopPath (Join-Path $testRoot 'missing-workshop') `
@@ -40,13 +42,41 @@ try {
     }
     if ($caughtError.FullyQualifiedErrorId -like 'ParameterArgumentValidationErrorEmptyStringNotAllowed*' -or
         $caughtError.Exception.Message -match "parameter 'Path'.*empty string") {
-        throw "Installer passed an empty profile path to Join-Path: $($caughtError.Exception.Message)"
+        throw "Installer passed an empty package/profile path to Join-Path: $($caughtError.Exception.Message)"
     }
     if ($caughtError.Exception.Message -notmatch 'Project Zomboid game directory does not exist|Project Zomboid \(Steam app 108600\) was not found') {
         throw "Downloads-folder bootstrap stopped at an unexpected boundary: $($caughtError.Exception.Message)"
     }
 
-    Write-Output 'Friend installer Downloads-folder and empty-profile bootstrap validation passed.'
+    Push-Location -LiteralPath $otherWorkingDirectory
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $nativeOutput = (& powershell.exe `
+            -NoLogo `
+            -NoProfile `
+            -ExecutionPolicy Bypass `
+            -File (Join-Path $packageRoot 'Install.ps1') `
+            -GamePath (Join-Path $testRoot 'missing-game') `
+            -WorkshopPath (Join-Path $testRoot 'missing-workshop') `
+            -WhatIf 2>&1 | Out-String)
+        $nativeExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+        Pop-Location
+    }
+    if ($nativeExitCode -eq 0) {
+        throw 'powershell.exe -File Downloads-folder probe unexpectedly completed the installer.'
+    }
+    if ($nativeOutput -match "parameter 'Path'.*empty string") {
+        throw "powershell.exe -File passed an empty path to Join-Path: $nativeOutput"
+    }
+    if ($nativeOutput -notmatch 'Project Zomboid game directory does not exist|Project Zomboid \(Steam app 108600\) was not found') {
+        throw "powershell.exe -File Downloads-folder probe stopped at an unexpected boundary: $nativeOutput"
+    }
+
+    Write-Output 'Friend installer Downloads-folder, powershell.exe -File, and empty-path bootstrap validation passed.'
 }
 finally {
     $env:USERPROFILE = $previousUserProfile
