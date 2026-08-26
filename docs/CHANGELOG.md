@@ -1,5 +1,12 @@
 # Change Log
 
+## 0.11.1
+
+- Fixed the friend installer failing before discovery when Windows PowerShell supplied an empty user-profile path. Profile resolution now falls back to `USERPROFILE` and otherwise reports an actionable error instead of passing an empty value to `Join-Path`.
+- Added a focused empty-profile bootstrap regression and made Steam discovery ignore incomplete library/app-manifest entries.
+- Revalidated the generated Java patches against the same public game version's Steam republish, build `24909800` (`projectzomboid.jar` SHA-256 `80E405A4BFC42F6072E75B3735F458A6514143DA011D3226007DED305A442F44`); deterministic patch JAR hashes remain unchanged.
+- Changed friend setup to download the complete third-party Workshop list through an initial server join before running the custom-mod installer; missing prerequisites now produce that single recovery instruction instead of opening individual Workshop pages.
+
 ## 0.11.0
 
 - Replaced the path-prompt package flow with a double-click `Install.cmd` friend bootstrap that auto-discovers the Steam installation, verifies Build 42.20.3 / Steam build 24775755, installs every repo-owned mod, and backs up then writes the exact 207-Mod-ID client activation order.

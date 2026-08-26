@@ -128,7 +128,7 @@ Tracked Java source lives under `media/java-src`. `mod.info` declares the genera
 | Apply ordered manifest to local client | `Apply-ModpackToLocalClient.ps1` | Client `mods/default.txt`, with backup |
 | Apply ordered manifest to hosted server | `Apply-ModpackToLocalProfile.ps1` | Only `WorkshopItems`, `Mods`, and `Map`, with full profile backup |
 | Build portable friend package | `Build-Package.ps1`; focused archive gate `Test-FriendPackage.ps1` | Ignored `dist/`, external third-party cache, and temporary staging |
-| Install portable package | `Install-Package.ps1` | User mods and optional game overlay, with exact gates and backups |
+| Install portable package | `Install-Package.ps1`; focused bootstrap gate `Test-FriendInstallerBootstrap.ps1` | User mods and optional game overlay, with exact gates and backups |
 | Retire old patch layout | `Migrate-PatchModLayout.ps1` | Removes only enumerated obsolete paths after replacement hash checks |
 | Build/install common Kahlua, zombie-loot, Trash and Corpses, or SecretZ JARs | `Build-CompatibilityPatch.ps1`, `Install-CompatibilityPatches.ps1` | External build tree and local common JARs |
 | Build/install performance diagnostics | `Build-PZPerformanceDiagnostics.ps1`, `Install-PZPerformanceDiagnostics.ps1` | External build tree and local client JAR |

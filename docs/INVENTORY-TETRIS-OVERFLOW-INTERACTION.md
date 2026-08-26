@@ -2,7 +2,7 @@
 
 ## Scope
 
-`InventoryTetrisOverflowInteractionFix` is a client-only compatibility mod for Project Zomboid `42.20.3`, Steam build `24775755`, and Inventory Tetris Workshop item `3775513231`.
+`InventoryTetrisOverflowInteractionFix` is a client-only compatibility mod for Project Zomboid `42.20.3`, Steam build `24909800`, and Inventory Tetris Workshop item `3775513231`.
 
 Inventory Tetris intentionally renders items that do not fit a container grid in a synthetic overflow strip to the right of that grid. The patch preserves that placement, container contents, and recovery behavior.
 

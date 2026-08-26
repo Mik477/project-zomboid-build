@@ -1,7 +1,7 @@
 # Patch Mod Layout
 
 Date: 2026-08-25
-Target: Project Zomboid 42.20.3, Steam build 24775755
+Target: Project Zomboid 42.20.3, Steam build 24909800
 
 The repo-owned patch set is organized by one upstream seam or one explicit modpack policy per mod. The retired catch-all IDs are `GaelGunStoreAmmoStorageFixes`, `ModpackCompatibilityFixes`, and `PZPerformanceFixes`.
 

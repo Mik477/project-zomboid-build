@@ -4,7 +4,7 @@ This repository is the reviewable source of truth for group-owned changes. The l
 
 ## Reference environment
 
-The current compatibility target is Project Zomboid `42.20.3`, Steam build `24775755`. The exact enabled Workshop-item, Mod ID, and map counts come from `config/modpack.json`; local subscription totals are deliberately not treated as project state.
+The current compatibility target is Project Zomboid `42.20.3`, Steam build `24909800`. The exact enabled Workshop-item, Mod ID, and map counts come from `config/modpack.json`; local subscription totals are deliberately not treated as project state.
 
 “Installed” is not the same as “enabled.” The ordered manifest is authoritative for the group modpack; extra subscriptions stay local unless deliberately added, reviewed, and exported.
 
@@ -169,4 +169,4 @@ For gameplay or performance work, also add reproduction steps and before/after e
 
 Commit one coherent, reviewed change at a time. Before staging, confirm no local config, live server file, save, database, log, Workshop payload, game binary, password, IP address, or absolute local path is present. Inspect the staged diff again before committing. Commit and push only on explicit request; pushing is a publication step, not part of syncing files from the game.
 
-The friend archive contains `Install.cmd`, the exact manifest, all repo-owned mods, generated Java JARs, and the pinned official ZombieBuddy v4.2 installer plus its MIT license. `Build-Package.ps1` downloads that upstream installer into an external cache, verifies SHA-256 `2A52466AFE804FECE5E88868EEF75A70E8964D3E4E01A3629B57CF6FF19E24B3`, and runs `Test-FriendPackage.ps1` against the completed ZIP. Workshop mods remain Steam-distributed. A friend extracts the whole ZIP and runs `Install.cmd`; after installation, joining the host downloads any missing server Workshop items.
+The friend archive contains `Install.cmd`, the exact manifest, all repo-owned mods, generated Java JARs, and the pinned official ZombieBuddy v4.2 installer plus its MIT license. `Build-Package.ps1` downloads that upstream installer into an external cache, verifies SHA-256 `2A52466AFE804FECE5E88868EEF75A70E8964D3E4E01A3629B57CF6FF19E24B3`, and runs `Test-FriendPackage.ps1` against the completed ZIP. Workshop mods remain Steam-distributed. A friend first joins the host once and lets the server Workshop download finish, then closes the game, extracts the whole ZIP, and runs `Install.cmd` before joining again.

@@ -4,7 +4,7 @@
 
 The Gael work is split across `GaelGunStoreCoreFixes`, `GaelGunStoreLootDiversification`, `GaelGunStoreInventoryTetrisCompatibility`, and the cross-mod `ItemVisualCompatibilityFixes` module. Together they provide the behavior documented below for:
 
-- Project Zomboid `42.20.3` / Steam build `24775755`
+- Project Zomboid `42.20.3` / Steam build `24909800`
 - GaelGunStore Workshop item [`3616176188`](https://steamcommunity.com/sharedfiles/filedetails/?id=3616176188)
 - Gael Mod ID `GaelGunStore_B42`
 

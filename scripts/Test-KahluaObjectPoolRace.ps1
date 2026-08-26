@@ -27,13 +27,13 @@ if (-not (Test-Path -LiteralPath $LocalConfigurationPath -PathType Leaf)) {
 
 $localConfiguration = Get-Content -LiteralPath $LocalConfigurationPath -Raw | ConvertFrom-Json
 if ([string]$localConfiguration.projectZomboid.exactGameVersion -ne '42.20.3' -or
-    [string]$localConfiguration.steam.buildId -ne '24775755') {
-    throw 'The Kahlua pool race harness is pinned to Project Zomboid 42.20.3 / Steam build 24775755.'
+    [string]$localConfiguration.steam.buildId -ne '24909800') {
+    throw 'The Kahlua pool race harness is pinned to Project Zomboid 42.20.3 / Steam build 24909800.'
 }
 
 $gameJar = Join-Path ([string]$localConfiguration.projectZomboid.gamePath) 'projectzomboid.jar'
 $workshopRoot = [IO.Path]::GetFullPath([string]$localConfiguration.projectZomboid.workshopPath)
-$expectedGameJarHash = 'BDA809FB49004A07DBFC560D059C0EE58D0643AB0F33B53351B13BD62F1D8227'
+$expectedGameJarHash = '80E405A4BFC42F6072E75B3735F458A6514143DA011D3226007DED305A442F44'
 if (-not (Test-Path -LiteralPath $gameJar -PathType Leaf)) { throw "Missing game JAR: $gameJar" }
 $actualGameJarHash = (Get-FileHash -LiteralPath $gameJar -Algorithm SHA256).Hash
 if ($actualGameJarHash -ne $expectedGameJarHash) {

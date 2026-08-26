@@ -2,7 +2,7 @@
 
 Research date: 2026-08-20
 
-Target: Project Zomboid `42.20.3`, Steam build `24775755`, hosted four-player multiplayer.
+Target: Project Zomboid `42.20.3`, Steam build `24909800`, hosted four-player multiplayer.
 
 Scope: official Indie Stone announcements/patch notes, first-party Workshop pages, and public repositories owned by relevant authors. No decompiled game source was inspected or reproduced.
 
@@ -131,7 +131,7 @@ The `Ragdolls in Multiplayer` uploader is linked to ZombieBuddy's signing ecosys
 
 If this project experiments, the least risky design is hybrid Java/Lua: the server remains authoritative over gameplay and corpses, while clients own only temporary presentation.
 
-1. **Exact-version gate:** load only on game `42.20.3` and Steam build `24775755`; abort cleanly on mismatch.
+1. **Exact-version gate:** load only on game `42.20.3` and Steam build `24909800`; abort cleanly on mismatch.
 2. **Normal server death:** let the server process the lethal melee hit, kill credit, inventory and corpse creation.
 3. **Compact visual event:** send zombie identity, root transform, facing, impulse class, seed and expiry time to relevant clients.
 4. **Client-local physics:** create the approximate ragdoll presentation without letting it decide death, drops or credit.

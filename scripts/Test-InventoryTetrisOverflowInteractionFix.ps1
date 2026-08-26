@@ -10,8 +10,8 @@ if (-not (Test-Path -LiteralPath $LocalConfigurationPath -PathType Leaf)) {
 
 $localConfiguration = Get-Content -LiteralPath $LocalConfigurationPath -Raw | ConvertFrom-Json
 if ([string]$localConfiguration.projectZomboid.exactGameVersion -ne '42.20.3' -or
-    [string]$localConfiguration.steam.buildId -ne '24775755') {
-    throw 'Overflow interaction validation requires Project Zomboid 42.20.3, Steam build 24775755.'
+    [string]$localConfiguration.steam.buildId -ne '24909800') {
+    throw 'Overflow interaction validation requires Project Zomboid 42.20.3, Steam build 24909800.'
 }
 
 $gamePath = [IO.Path]::GetFullPath([string]$localConfiguration.projectZomboid.gamePath)

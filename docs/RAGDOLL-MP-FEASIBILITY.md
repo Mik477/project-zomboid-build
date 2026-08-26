@@ -12,10 +12,10 @@ The recommended next step is an opt-in, client-only prototype restricted to leth
 
 ## Evidence from the exact build
 
-The repository targets Project Zomboid `42.20.3`, Steam build `24775755`. The inspected `projectzomboid.jar` SHA-256 was:
+The repository targets Project Zomboid `42.20.3`, Steam build `24909800`. The inspected `projectzomboid.jar` SHA-256 was:
 
 ```text
-BDA809FB49004A07DBFC560D059C0EE58D0643AB0F33B53351B13BD62F1D8227
+80E405A4BFC42F6072E75B3735F458A6514143DA011D3226007DED305A442F44
 ```
 
 This fingerprint is evidence for this investigation, not a redistributable artifact. No game class or decompiled source is stored in the repository.

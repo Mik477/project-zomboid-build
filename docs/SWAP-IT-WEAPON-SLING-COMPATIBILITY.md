@@ -1,6 +1,6 @@
 # Swap It Weapon Sling Compatibility
 
-Target: Project Zomboid 42.20.3, Steam build 24775755
+Target: Project Zomboid 42.20.3, Steam build 24909800
 
 ## Scope
 

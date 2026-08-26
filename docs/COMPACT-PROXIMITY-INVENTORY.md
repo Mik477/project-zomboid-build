@@ -10,7 +10,7 @@ This is original compatibility code. It was informed by the public behavior of P
 
 | Dependency | Inspected version |
 | --- | --- |
-| Project Zomboid | `42.20.3` / Steam build `24775755` |
+| Project Zomboid | `42.20.3` / Steam build `24909800` |
 | Inventory Tetris | `6.11.5-beta` |
 | Proximity Inventory reference | Build 42 variant installed on 2026-08-20 |
 

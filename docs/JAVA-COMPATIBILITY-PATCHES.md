@@ -1,7 +1,7 @@
 # Java Compatibility Patches
 
 Date: 2026-08-25
-Target: Project Zomboid 42.20.3, Steam build 24775755, ZombieBuddy 2.3.2
+Target: Project Zomboid 42.20.3, Steam build 24909800, ZombieBuddy 2.3.2
 
 Four repo-owned mods currently generate common Java JARs: two focused replacements for the former `ModpackCompatibilityFixes` catch-all, one Kahlua concurrency guard, and the zombie-inventory half of the firearm-loot policy. They do not replace or redistribute Workshop files. JARs are generated during installation or package staging and must not be committed under `src`.
 
@@ -35,7 +35,7 @@ The Lua half initializes newly filled world containers. The common-JAR half advi
 
 | Source | SHA-256 |
 |---|---|
-| `projectzomboid.jar` | `BDA809FB49004A07DBFC560D059C0EE58D0643AB0F33B53351B13BD62F1D8227` |
+| `projectzomboid.jar` | `80E405A4BFC42F6072E75B3735F458A6514143DA011D3226007DED305A442F44` |
 | `ZombieBuddy.jar` | `6DD95CEDCE60F03BF8B8CEFD0D19EB156230E0D54BFFA07DE9DA5212A06C7BE6` |
 | Trash and Corpses `ScatteredTrashes.lua` | `556A46A87DCC9CF704FB65F991C5CD44396CCCEC0016442DD66776578AE8B6DB` |
 | SecretZ `SZCServer.lua` | `8CDC2C1DC0DFB191D1E4A46B0C4E76DEC4816198E27A3E560E3C053485FB4838` |

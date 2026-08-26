@@ -4,14 +4,14 @@
     "package":  {
                     "id":  "project-zomboid-build",
                     "name":  "Project Zomboid Friends Build",
-                    "version":  "0.11.0",
+                    "version":  "0.11.1",
                     "description":  "Portable client package for a four-player modded Project Zomboid server."
                 },
     "compatibility":  {
                           "game":  "Project Zomboid",
                           "targetBuild":  "Build 42",
                           "exactGameVersion":  "42.20.3",
-                          "steamBuildId":  "24775755",
+                          "steamBuildId":  "24909800",
                           "playerCount":  4,
                           "serverMode":  "hosted"
                       },

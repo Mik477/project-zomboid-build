@@ -24,6 +24,7 @@ $requiredPaths = @(
     'scripts\BetterVehicleDynamicsPayload.ps1',
     'scripts\Test-BetterVehicleDynamicsPayload.ps1',
     'scripts\Test-FriendPackage.ps1',
+    'scripts\Test-FriendInstallerBootstrap.ps1',
     'packaging\Install.cmd',
     'packaging\README.txt',
     'packaging\ZombieBuddy-LICENSE.txt',
@@ -315,6 +316,13 @@ try {
 }
 catch {
     $failures.Add("Friend package validation failed: $($_.Exception.Message)")
+}
+
+try {
+    & (Join-Path $PSScriptRoot 'Test-FriendInstallerBootstrap.ps1')
+}
+catch {
+    $failures.Add("Friend installer bootstrap validation failed: $($_.Exception.Message)")
 }
 
 try {

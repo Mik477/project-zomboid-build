@@ -10,8 +10,8 @@ if (-not (Test-Path -LiteralPath $LocalConfigurationPath -PathType Leaf)) {
 
 $localConfiguration = Get-Content -LiteralPath $LocalConfigurationPath -Raw | ConvertFrom-Json
 if ([string]$localConfiguration.projectZomboid.exactGameVersion -ne '42.20.3' -or
-    [string]$localConfiguration.steam.buildId -ne '24775755') {
-    throw 'Inventory action intent validation requires Project Zomboid 42.20.3, Steam build 24775755.'
+    [string]$localConfiguration.steam.buildId -ne '24909800') {
+    throw 'Inventory action intent validation requires Project Zomboid 42.20.3, Steam build 24909800.'
 }
 
 $gamePath = [IO.Path]::GetFullPath([string]$localConfiguration.projectZomboid.gamePath)
@@ -33,7 +33,7 @@ foreach ($path in @($gameJar, $java, $compilerJar, $entryPath, $runtimePath, $po
 }
 
 foreach ($reviewed in @(
-    @{ Name='Vanilla inventory context menu'; Path=(Join-Path $gamePath 'media\lua\client\ISUI\ISInventoryPaneContextMenu.lua'); Hash='D448542EC2D93CACD80C0FE6A5AEDF41D16521F4E227A1382FFC9431F0C3E1A9'; Tokens=@('ISInventoryPaneContextMenu.wearItem = function(item, player)', 'ISInventoryPaneContextMenu.onInsertMagazine = function(playerObj, weapon, magazine)', 'ISInventoryPaneContextMenu.onEjectMagazine = function(playerObj, weapon)') },
+    @{ Name='Vanilla inventory context menu'; Path=(Join-Path $gamePath 'media\lua\client\ISUI\ISInventoryPaneContextMenu.lua'); Hash='A28DC83B943D20C6FA59370195AA649AF249EA2EBD7D670ADDD6A9B76A357291'; Tokens=@('ISInventoryPaneContextMenu.wearItem = function(item, player)', 'ISInventoryPaneContextMenu.onInsertMagazine = function(playerObj, weapon, magazine)', 'ISInventoryPaneContextMenu.onEjectMagazine = function(playerObj, weapon)', 'ISInventoryPaneContextMenu.equipWeapon = function(weapon, primary, twoHands, player, alwaysTurnOn)') },
     @{ Name='Vanilla timed-action queue'; Path=(Join-Path $gamePath 'media\lua\client\TimedActions\ISTimedActionQueue.lua'); Hash='23C98152728172B44CCB41BC8DDC97798FEE7A91B57B20620FB11D5F41E7792C'; Tokens=@('ISTimedActionQueue.queues = {}', 'queue:addToQueue(action)') },
     @{ Name='Vanilla Wear action'; Path=(Join-Path $gamePath 'media\lua\shared\TimedActions\ISWearClothing.lua'); Hash='146C66743D8593581BAE58E7E1D954886F73A1E6B8BC51720FD2271AFBB50524'; Tokens=@('ISWearClothing = ISBaseTimedAction:derive("ISWearClothing")') },
     @{ Name='Vanilla insert-magazine action'; Path=(Join-Path $gamePath 'media\lua\shared\TimedActions\ISInsertMagazine.lua'); Hash='51D607D1B33B6A6FF90DEAA01944CEBEDBE563FEB34A14A972139BA4C7D6A7E2'; Tokens=@('ISInsertMagazine = ISBaseTimedAction:derive("ISInsertMagazine")') },

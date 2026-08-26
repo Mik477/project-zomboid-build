@@ -4,7 +4,7 @@ Date: 2026-08-23
 
 ## Purpose
 
-`MultiplayerRagdollPrototype` is a first, deliberately narrow test of client-local zombie ragdolls in multiplayer. It targets only Project Zomboid `42.20.3`, Steam build `24775755`, with ZombieBuddy `2.3.2`.
+`MultiplayerRagdollPrototype` is a first, deliberately narrow test of client-local zombie ragdolls in multiplayer. It targets only Project Zomboid `42.20.3`, Steam build `24909800`, with ZombieBuddy `2.3.2`.
 
 The prototype answers one question: **can an off-ground or getting-up zombie killed by a melee attack or firearm enter the existing client-local ragdoll path before the authoritative death packet creates its corpse?**
 
@@ -19,7 +19,7 @@ This is a hybrid passive ragdoll, not a GTA/Euphoria-style active ragdoll. Proje
 The Java patch:
 
 - runs only on a multiplayer client;
-- fails closed at runtime unless `projectzomboid.jar` has the exact reviewed SHA-256 for `42.20.3` / Steam build `24775755`;
+- fails closed at runtime unless `projectzomboid.jar` has the exact reviewed SHA-256 for `42.20.3` / Steam build `24909800`;
 - records whether the target was alive and either off-ground or getting up when melee or non-explosive ranged hit consequences begin;
 - at the final `applyDamage(float)` seam, recognizes lethal damage before health subtraction and selects the fast generic ragdoll handoff in default `restrained` mode; older modes retain their existing firearm, spear, knife, and stagger opening poses;
 - for ranged deaths only, requests `fallOnFront` before the forced transition when captured movement is at least `0.75 m/s` and points toward the shooter with a direction dot product of `-0.60` or lower; slow, retreating, melee, and grounded deaths keep vanilla orientation selection;

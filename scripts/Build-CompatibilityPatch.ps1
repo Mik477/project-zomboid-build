@@ -12,7 +12,7 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $sourceModRoot = Join-Path (Join-Path $repositoryRoot 'src\mods') $PatchId
 $sourceVersionRoot = Join-Path $sourceModRoot '42.20'
 $sourceJavaRoot = Join-Path $sourceVersionRoot 'media\java-src'
-$expectedGameJarHash = 'BDA809FB49004A07DBFC560D059C0EE58D0643AB0F33B53351B13BD62F1D8227'
+$expectedGameJarHash = '80E405A4BFC42F6072E75B3735F458A6514143DA011D3226007DED305A442F44'
 $expectedZombieBuddyHash = '6DD95CEDCE60F03BF8B8CEFD0D19EB156230E0D54BFFA07DE9DA5212A06C7BE6'
 $compilerVersion = '3.46.0'
 $compilerHash = 'D0D43F8E2D7003E5EFED612E2CBB5F01870043397D8F1BBE536FD9128F4FCBF7'
@@ -64,11 +64,11 @@ $manifest = Get-Content -LiteralPath (Join-Path $repositoryRoot 'config\modpack.
 if ([string]$localConfiguration.projectZomboid.exactGameVersion -ne '42.20.3') {
     throw "$PatchId requires Project Zomboid 42.20.3; local configuration reports $($localConfiguration.projectZomboid.exactGameVersion)."
 }
-if ([string]$localConfiguration.steam.buildId -ne '24775755') {
-    throw "$PatchId requires Steam build 24775755; local configuration reports $($localConfiguration.steam.buildId)."
+if ([string]$localConfiguration.steam.buildId -ne '24909800') {
+    throw "$PatchId requires Steam build 24909800; local configuration reports $($localConfiguration.steam.buildId)."
 }
 if ([string]$manifest.compatibility.exactGameVersion -ne '42.20.3' -or
-    [string]$manifest.compatibility.steamBuildId -ne '24775755') {
+    [string]$manifest.compatibility.steamBuildId -ne '24909800') {
     throw 'Repository compatibility metadata no longer matches the compatibility-fix target.'
 }
 

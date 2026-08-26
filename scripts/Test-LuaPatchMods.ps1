@@ -14,11 +14,11 @@ $gamePath = [IO.Path]::GetFullPath([string]$localConfiguration.projectZomboid.ga
 $gameJar = Join-Path $gamePath 'projectzomboid.jar'
 $java = Join-Path $gamePath 'jre64\bin\java.exe'
 $compilerJar = Join-Path $env:LOCALAPPDATA 'project-zomboid-build\tools\ecj-3.46.0.jar'
-$expectedGameJarHash = 'BDA809FB49004A07DBFC560D059C0EE58D0643AB0F33B53351B13BD62F1D8227'
+$expectedGameJarHash = '80E405A4BFC42F6072E75B3735F458A6514143DA011D3226007DED305A442F44'
 $expectedCompilerHash = 'D0D43F8E2D7003E5EFED612E2CBB5F01870043397D8F1BBE536FD9128F4FCBF7'
 if ([string]$localConfiguration.projectZomboid.exactGameVersion -ne '42.20.3' -or
-    [string]$localConfiguration.steam.buildId -ne '24775755') {
-    throw 'Focused Lua patch validation requires Project Zomboid 42.20.3, Steam build 24775755.'
+    [string]$localConfiguration.steam.buildId -ne '24909800') {
+    throw 'Focused Lua patch validation requires Project Zomboid 42.20.3, Steam build 24909800.'
 }
 foreach ($toolPath in @($gameJar, $java, $compilerJar)) {
     if (-not (Test-Path -LiteralPath $toolPath -PathType Leaf)) { throw "Missing Lua validation tool: $toolPath" }

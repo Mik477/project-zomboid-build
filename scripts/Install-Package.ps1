@@ -1,17 +1,27 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [string]$PackageRoot = $PSScriptRoot,
-    [string]$ZomboidUserPath = (Join-Path ([Environment]::GetFolderPath('UserProfile')) 'Zomboid'),
+    [string]$ZomboidUserPath,
     [string]$GamePath,
     [string]$WorkshopPath,
     [string]$ZombieBuddyInstallerPath,
     [switch]$IncludeGameOverrides,
     [switch]$SkipZombieBuddyInstaller,
-    [switch]$SkipBetterVehicleDynamics,
-    [switch]$SkipWorkshopPrompts
+    [switch]$SkipBetterVehicleDynamics
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($ZomboidUserPath)) {
+    $userProfilePath = $env:USERPROFILE
+    if ([string]::IsNullOrWhiteSpace($userProfilePath)) {
+        $userProfilePath = [Environment]::GetFolderPath('UserProfile')
+    }
+    if ([string]::IsNullOrWhiteSpace($userProfilePath)) {
+        throw 'Windows did not provide a user-profile path. Set USERPROFILE or run Install.ps1 with -ZomboidUserPath.'
+    }
+    $ZomboidUserPath = Join-Path $userProfilePath 'Zomboid'
+}
+
 $manifestPath = Join-Path $PackageRoot 'manifest.json'
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
     throw "Package manifest not found: $manifestPath"
@@ -61,16 +71,20 @@ function Resolve-ProjectZomboidInstallation {
         }
 
         foreach ($libraryRoot in @($libraryRoots | Sort-Object -Unique)) {
+            if ([string]::IsNullOrWhiteSpace($libraryRoot)) { continue }
             $appManifestPath = Join-Path $libraryRoot 'steamapps\appmanifest_108600.acf'
             if (-not (Test-Path -LiteralPath $appManifestPath -PathType Leaf)) { continue }
             $appManifestText = Get-Content -LiteralPath $appManifestPath -Raw
             $installDirectory = Get-AcfValue -Text $appManifestText -Name 'installdir'
+            if ([string]::IsNullOrWhiteSpace($installDirectory)) { continue }
+            $steamBuildId = Get-AcfValue -Text $appManifestText -Name 'buildid'
+            if ([string]::IsNullOrWhiteSpace($steamBuildId)) { continue }
             $discoveredGamePath = Join-Path $libraryRoot (Join-Path 'steamapps\common' $installDirectory)
             if (-not (Test-Path -LiteralPath $discoveredGamePath -PathType Container)) { continue }
             return [pscustomobject]@{
                 GamePath = $discoveredGamePath
                 WorkshopPath = Join-Path $libraryRoot 'steamapps\workshop\content\108600'
-                SteamBuildId = Get-AcfValue -Text $appManifestText -Name 'buildid'
+                SteamBuildId = $steamBuildId
             }
         }
     }
@@ -155,16 +169,7 @@ function Require-WorkshopItem {
         Write-Output "Would require Steam Workshop item $ItemId ($Name)."
         return $itemPath
     }
-    if ($SkipWorkshopPrompts) {
-        throw "Steam Workshop item $ItemId ($Name) is missing."
-    }
-
-    Start-Process "steam://url/CommunityFilePage/$ItemId"
-    $null = Read-Host "Subscribe to $Name in Steam, wait for its download to finish, then press Enter"
-    if (-not (Test-Path -LiteralPath $itemPath -PathType Container)) {
-        throw "Steam has not downloaded Workshop item $ItemId ($Name). Wait for the download, then run Install.cmd again."
-    }
-    return $itemPath
+    throw "Steam Workshop item $ItemId ($Name) is missing. Start Project Zomboid, join the host once, let the server Workshop download finish, close the game, then run Install.cmd again."
 }
 
 function Write-ClientModList {
@@ -257,12 +262,12 @@ if (-not $SkipZombieBuddyInstaller -and $PSCmdlet.ShouldProcess($ZombieBuddyInst
 }
 
 if ([string]$manifest.compatibility.exactGameVersion -ne '42.20.3' -or
-    [string]$manifest.compatibility.steamBuildId -ne '24775755') {
+    [string]$manifest.compatibility.steamBuildId -ne '24909800') {
     throw 'Package compatibility metadata does not match the exact Java patch target.'
 }
 Assert-ExactFileHash `
     -Path (Join-Path $GamePath 'projectzomboid.jar') `
-    -ExpectedHash 'BDA809FB49004A07DBFC560D059C0EE58D0643AB0F33B53351B13BD62F1D8227' `
+    -ExpectedHash '80E405A4BFC42F6072E75B3735F458A6514143DA011D3226007DED305A442F44' `
     -Description 'projectzomboid.jar'
 
 $installedZombieBuddyJar = Join-Path $GamePath 'ZombieBuddy.jar'

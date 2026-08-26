@@ -41,10 +41,14 @@ Require-Tokens -Path (Join-Path $PSScriptRoot 'Build-Package.ps1') -Tokens @(
 )
 Require-Tokens -Path (Join-Path $PSScriptRoot 'Install-Package.ps1') -Tokens @(
     'Resolve-ProjectZomboidInstallation',
+    "Windows did not provide a user-profile path",
+    'IsNullOrWhiteSpace($installDirectory)',
+    'IsNullOrWhiteSpace($steamBuildId)',
     'Run the official ZombieBuddy installer',
     'zbNative.dll installed by the official installer',
     'reviewed Trash and Corpses source',
     'reviewed SecretZ source',
+    'join the host once',
     'Write-ClientModList',
     'New-BetterVehicleDynamicsPayloadSnapshot',
     'Join the host and let Project Zomboid/Steam install the server Workshop list before playing.'

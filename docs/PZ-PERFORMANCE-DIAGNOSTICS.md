@@ -4,7 +4,7 @@ Date: 2026-08-24
 
 ## Purpose
 
-`PZPerformanceDiagnostics` is the measurement-only first stage of the modpack performance patch. It targets Project Zomboid `42.20.3`, Steam build `24775755`, and ZombieBuddy `2.3.2`.
+`PZPerformanceDiagnostics` is the measurement-only first stage of the modpack performance patch. It targets Project Zomboid `42.20.3`, Steam build `24909800`, and ZombieBuddy `2.3.2`.
 
 It is designed to answer three concrete questions from one short session:
 

@@ -1,7 +1,7 @@
 # Inventory Action Intent Fix
 
 Date: 2026-08-25
-Target: Project Zomboid 42.20.3, Steam build 24775755
+Target: Project Zomboid 42.20.3, Steam build 24909800
 
 ## Problem
 

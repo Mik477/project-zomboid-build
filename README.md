@@ -6,7 +6,7 @@ A private, reproducible Project Zomboid setup for a four-player group using a la
 
 The repository contains no redistributed Workshop mods or game files. The current manifest organizes repo-owned behavior into focused patch mods for compact inventory, Gael correctness and loot policy, item visuals, Lua compatibility, Java safety guards, and observer-only diagnostics. The multiplayer ragdoll prototype remains packaged but disabled by default.
 
-The current local reference environment is Project Zomboid `42.20.3` (Steam build `24775755`). See [the local workflow](docs/LOCAL-WORKFLOW.md) for the discovered mod inventory and guarded edit/sync process, and the [activated-mod compatibility audit](docs/MOD-COMPATIBILITY-AUDIT.md) before changing the shared order.
+The current local reference environment is Project Zomboid `42.20.3` (Steam build `24909800`). See [the local workflow](docs/LOCAL-WORKFLOW.md) for the discovered mod inventory and guarded edit/sync process, and the [activated-mod compatibility audit](docs/MOD-COMPATIBILITY-AUDIT.md) before changing the shared order.
 
 Agents should start with the [Agent Guide](docs/AGENT-GUIDE.md) to locate the owning module, edit path, focused validator, and deployment workflow for a change.
 
@@ -58,7 +58,7 @@ The build writes a versioned ZIP to `dist/`. A friend extracts the complete ZIP,
 Install.cmd
 ```
 
-The bootstrap auto-discovers Steam and Project Zomboid, runs the pinned official ZombieBuddy installer, exact-hash checks the game and Java agent, installs every group-owned mod beneath `%USERPROFILE%\Zomboid`, applies the reviewed Better Vehicle Dynamics overlay from Steam's Workshop copy, and activates the exact ordered manifest in `mods/default.txt`. It backs up replaced files. Project Zomboid's normal server-join flow downloads the remaining third-party Workshop items; they are not redistributed in the ZIP.
+Before running the bootstrap, the friend joins the host once and lets Project Zomboid download the complete server Workshop list; that first connection may stop on the still-missing custom mods. The bootstrap then auto-discovers Steam and Project Zomboid, runs the pinned official ZombieBuddy installer, exact-hash checks the game and Java agent, installs every group-owned mod beneath `%USERPROFILE%\Zomboid`, applies the reviewed Better Vehicle Dynamics overlay from Steam's Workshop copy, and activates the exact ordered manifest in `mods/default.txt`. It backs up replaced files. Third-party Workshop items are never redistributed in the ZIP.
 
 ## First data to add
 
